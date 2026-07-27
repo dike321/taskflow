@@ -21,6 +21,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'inventory.stockIn', label: 'Inventory - Stock In', actions: ['view', 'create', 'edit', 'approve'] },
   { key: 'inventory.stockOut', label: 'Inventory - Stock Out', actions: ['view', 'create', 'edit', 'approve'] },
   { key: 'inventory.history', label: 'Inventory - History', actions: ['view', 'export'] },
+  { key: 'suppliers', label: 'Suppliers', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'tickets', label: 'Tickets', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'settings', label: 'Settings', actions: ['view', 'edit'] },
   { key: 'activityLog', label: 'Activity Log', actions: ['view'] },
@@ -41,6 +42,7 @@ export const mockRoles: Role[] = [
       'inventory.stockIn': ['view', 'create', 'edit', 'approve'],
       'inventory.stockOut': ['view', 'create', 'edit', 'approve'],
       'inventory.history': ['view', 'export'],
+      suppliers: ['view', 'create', 'edit', 'delete'],
       tickets: ['view', 'create', 'edit', 'delete'],
       settings: ['view', 'edit'],
       activityLog: ['view'],
@@ -56,6 +58,7 @@ export const mockRoles: Role[] = [
       'inventory.stockIn': ['view', 'create'],
       'inventory.stockOut': ['view', 'create'],
       'inventory.history': ['view'],
+      suppliers: ['view'],
     },
   },
   {
@@ -68,6 +71,7 @@ export const mockRoles: Role[] = [
       'inventory.stockIn': ['view', 'create', 'approve'],
       'inventory.stockOut': ['view', 'create', 'approve'],
       'inventory.history': ['view', 'export'],
+      suppliers: ['view', 'create', 'edit'],
     },
   },
 ]

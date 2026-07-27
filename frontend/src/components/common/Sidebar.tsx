@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
-import { LayoutDashboard, Users, Package, Ticket, Settings, ChevronDown, LogOut } from './Icons'
+import { LayoutDashboard, Users, Package, Truck, Ticket, Settings, ChevronDown, LogOut } from './Icons'
 import { useSession } from '../../data/session'
 import { hasModuleAccess } from '../../utils/permissions'
 
@@ -30,6 +30,7 @@ const menuItems: MenuItem[] = [
     label: 'Inventory',
     modules: ['inventory.items', 'inventory.stockIn', 'inventory.stockOut', 'inventory.history'],
   },
+  { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
   { path: '/tickets', icon: Ticket, label: 'Tickets', modules: ['tickets'] },
   {
     path: '/settings',

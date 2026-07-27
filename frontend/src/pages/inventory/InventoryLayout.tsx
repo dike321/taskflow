@@ -1,11 +1,10 @@
-import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
 import PageToolbar from '../../components/common/PageToolbar'
 import { useSession } from '../../data/session'
 import { hasModuleAccess } from '../../utils/permissions'
-import { mockItems, mockStockTransactions } from '../../data/inventory'
+import { useInventoryData } from '../../data/inventory'
 import type { Item, StockTransaction } from '../../data/inventory'
 
 export interface InventoryContext {
@@ -24,8 +23,7 @@ const tabs = [
 
 export default function InventoryLayout() {
   const { currentUser } = useSession()
-  const [items, setItems] = useState<Item[]>(mockItems)
-  const [transactions, setTransactions] = useState<StockTransaction[]>(mockStockTransactions)
+  const { items, setItems, transactions, setTransactions } = useInventoryData()
 
   const visibleTabs = tabs.filter((tab) => hasModuleAccess(currentUser, tab.module))
 

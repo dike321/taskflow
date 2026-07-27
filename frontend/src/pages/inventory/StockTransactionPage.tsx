@@ -14,6 +14,7 @@ import type { StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
+import { useSuppliers } from '../../data/suppliers'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
@@ -34,6 +35,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const { items, setItems, transactions, setTransactions } = useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
+  const { suppliers } = useSuppliers()
 
   const moduleKey = type === 'in' ? 'inventory.stockIn' : 'inventory.stockOut'
   const label = type === 'in' ? 'Stock In' : 'Stock Out'
@@ -41,6 +43,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const canApprove = hasPermission(currentUser, moduleKey, 'approve')
 
   const activeUsers = mockUsers.filter((user) => user.status === 'active')
+  const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'active')
 
   const buildEmptyFormData = () => ({
     itemId: items[0]?.id ?? 0,
@@ -48,6 +51,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     date: today(),
     picId: currentUser.id,
     reference: '',
+    supplierId: 0,
     note: '',
   })
 
@@ -71,6 +75,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
   const getUserName = (userId?: number) => mockUsers.find((user) => user.id === userId)?.name ?? '-'
+  const getSupplierName = (supplierId?: number) => suppliers.find((supplier) => supplier.id === supplierId)?.name ?? '-'
 
   const adjustStock = (itemId: number, quantity: number) => {
     setItems((prev) =>
@@ -113,6 +118,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       approvedBy: approvedNow ? currentUser.id : undefined,
       approvedAt: approvedNow ? today() : undefined,
       reference: formData.reference || undefined,
+      supplierId: type === 'in' && formData.supplierId ? formData.supplierId : undefined,
       note: formData.note || undefined,
     }
 
@@ -127,7 +133,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       userName: currentUser.name,
       action: 'create',
       module: moduleKey,
-      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)})${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)})${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
     })
 
     setIsModalOpen(false)
@@ -173,6 +179,9 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
     },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
+    ...(type === 'in'
+      ? [{ key: 'supplier', header: 'Supplier', render: (t: StockTransaction) => getSupplierName(t.supplierId) }]
+      : []),
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
       key: 'status',
@@ -281,8 +290,22 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
               </option>
             ))}
           </Select>
+          {type === 'in' && (
+            <Select
+              label="Supplier"
+              value={formData.supplierId}
+              onChange={(e) => setFormData({ ...formData, supplierId: Number(e.target.value) })}
+            >
+              <option value={0}>No supplier selected</option>
+              {activeSuppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </Select>
+          )}
           <Input
-            label={type === 'in' ? 'Reference (PO / Supplier)' : 'Reference (Department / Purpose)'}
+            label={type === 'in' ? 'Reference (PO Number)' : 'Reference (Department / Purpose)'}
             value={formData.reference}
             onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
             placeholder={type === 'in' ? 'PO-2024-003' : 'IT Department'}

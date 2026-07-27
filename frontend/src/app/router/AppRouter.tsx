@@ -3,6 +3,8 @@ import LoginPage from '../../pages/LoginPage'
 import MainLayout from '../../layouts/MainLayout'
 import { SessionProvider } from '../../data/session'
 import { ActivityLogProvider } from '../../data/activityLog'
+import { InventoryDataProvider } from '../../data/inventory'
+import { SuppliersProvider } from '../../data/suppliers'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
 import InventoryLayout from '../../pages/inventory/InventoryLayout'
@@ -10,6 +12,7 @@ import ItemsPage from '../../pages/inventory/ItemsPage'
 import StockInPage from '../../pages/inventory/StockInPage'
 import StockOutPage from '../../pages/inventory/StockOutPage'
 import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
+import SuppliersPage from '../../pages/SuppliersPage'
 import TicketsPage from '../../pages/TicketsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
@@ -29,7 +32,11 @@ function AppRouter() {
           element={
             <SessionProvider>
               <ActivityLogProvider>
-                <MainLayout />
+                <InventoryDataProvider>
+                  <SuppliersProvider>
+                    <MainLayout />
+                  </SuppliersProvider>
+                </InventoryDataProvider>
               </ActivityLogProvider>
             </SessionProvider>
           }
@@ -44,6 +51,7 @@ function AppRouter() {
             <Route path="stock-out" element={<StockOutPage />} />
             <Route path="history" element={<StockHistoryPage />} />
           </Route>
+          <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="roles" replace />} />

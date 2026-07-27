@@ -1,3 +1,6 @@
+import { createContext, useContext, useState } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
+
 export interface Item {
   id: number
   sku: string
@@ -31,6 +34,7 @@ export interface StockTransaction {
   approvedBy?: number
   approvedAt?: string
   reference?: string
+  supplierId?: number
   note?: string
 }
 
@@ -46,6 +50,7 @@ export const mockStockTransactions: StockTransaction[] = [
     approvedBy: 2,
     approvedAt: '2024-03-01',
     reference: 'PO-2024-001',
+    supplierId: 1,
   },
   {
     id: 2,
@@ -58,6 +63,7 @@ export const mockStockTransactions: StockTransaction[] = [
     approvedBy: 5,
     approvedAt: '2024-03-05',
     reference: 'PO-2024-002',
+    supplierId: 2,
   },
   {
     id: 3,
@@ -82,3 +88,29 @@ export const mockStockTransactions: StockTransaction[] = [
     reference: 'Finance Department',
   },
 ]
+
+interface InventoryDataContextValue {
+  items: Item[]
+  setItems: Dispatch<SetStateAction<Item[]>>
+  transactions: StockTransaction[]
+  setTransactions: Dispatch<SetStateAction<StockTransaction[]>>
+}
+
+const InventoryDataContext = createContext<InventoryDataContextValue | undefined>(undefined)
+
+export function InventoryDataProvider({ children }: { children: ReactNode }) {
+  const [items, setItems] = useState<Item[]>(mockItems)
+  const [transactions, setTransactions] = useState<StockTransaction[]>(mockStockTransactions)
+
+  return (
+    <InventoryDataContext.Provider value={{ items, setItems, transactions, setTransactions }}>
+      {children}
+    </InventoryDataContext.Provider>
+  )
+}
+
+export function useInventoryData() {
+  const context = useContext(InventoryDataContext)
+  if (!context) throw new Error('useInventoryData must be used within an InventoryDataProvider')
+  return context
+}
