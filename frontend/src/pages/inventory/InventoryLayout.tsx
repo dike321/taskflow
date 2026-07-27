@@ -19,7 +19,7 @@ const tabs = [
   { path: 'items', label: 'Items', module: 'inventory.items' },
   { path: 'stock-in', label: 'Stock In', module: 'inventory.stockIn' },
   { path: 'stock-out', label: 'Stock Out', module: 'inventory.stockOut' },
-  // history tab is added here once StockHistoryPage is built
+  { path: 'history', label: 'History', module: 'inventory.history' },
 ]
 
 export default function InventoryLayout() {

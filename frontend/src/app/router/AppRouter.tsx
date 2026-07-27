@@ -7,6 +7,7 @@ import InventoryLayout from '../../pages/inventory/InventoryLayout'
 import ItemsPage from '../../pages/inventory/ItemsPage'
 import StockInPage from '../../pages/inventory/StockInPage'
 import StockOutPage from '../../pages/inventory/StockOutPage'
+import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import TicketsPage from '../../pages/TicketsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
@@ -26,6 +27,7 @@ function AppRouter() {
             <Route path="items" element={<ItemsPage />} />
             <Route path="stock-in" element={<StockInPage />} />
             <Route path="stock-out" element={<StockOutPage />} />
+            <Route path="history" element={<StockHistoryPage />} />
           </Route>
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="settings" element={<SettingsLayout />}>
