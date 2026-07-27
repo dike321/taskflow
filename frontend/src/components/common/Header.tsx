@@ -1,4 +1,6 @@
 import { Form } from 'react-bootstrap'
+import { Link } from 'react-router-dom'
+import Dropdown from '../ui/Dropdown'
 import { Bell, Search, User } from './Icons'
 import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
@@ -33,20 +35,40 @@ export default function Header() {
             />
           </button>
 
-          <div className="d-flex align-items-center gap-2 border-start ps-3">
-            <div className="text-end">
-              <p className="mb-0 small fw-medium">{currentUser.name}</p>
-              <p className="mb-0 text-muted" style={{ fontSize: '0.75rem' }}>
-                {role?.name ?? 'Unknown Role'}
-              </p>
-            </div>
-            <div
-              className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle"
-              style={{ width: 40, height: 40 }}
+          <Dropdown align="end">
+            <Dropdown.Toggle
+              as="div"
+              id="account-menu"
+              bsPrefix="account-menu-toggle"
+              className="d-flex align-items-center gap-2 border-start ps-3"
+              style={{ cursor: 'pointer' }}
             >
-              <User size={20} />
-            </div>
-          </div>
+              <div className="text-end">
+                <p className="mb-0 small fw-medium">{currentUser.name}</p>
+                <p className="mb-0 text-muted" style={{ fontSize: '0.75rem' }}>
+                  {role?.name ?? 'Unknown Role'}
+                </p>
+              </div>
+              <div
+                className="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle"
+                style={{ width: 40, height: 40 }}
+              >
+                <User size={20} />
+              </div>
+            </Dropdown.Toggle>
+
+            <Dropdown.Menu>
+              <Dropdown.Item as={Link} to="/settings/profile">
+                My Profile
+              </Dropdown.Item>
+              <Dropdown.Item as={Link} to="/settings/general">
+                General
+              </Dropdown.Item>
+              <Dropdown.Item as={Link} to="/settings/notifications">
+                Notifications
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
         </div>
       </div>
     </header>

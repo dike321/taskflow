@@ -35,12 +35,9 @@ const menuItems: MenuItem[] = [
     path: '/settings',
     icon: Settings,
     label: 'Settings',
-    modules: ['settings', 'roles', 'activityLog'],
+    modules: ['roles', 'activityLog'],
     children: [
       { path: '/settings/roles', label: 'Roles', module: 'roles' },
-      { path: '/settings/general', label: 'General', module: 'settings' },
-      { path: '/settings/notifications', label: 'Notifications', module: 'settings' },
-      { path: '/settings/profile', label: 'My Profile', module: 'settings' },
       { path: '/settings/activity-log', label: 'Activity Log', module: 'activityLog' },
     ],
   },
