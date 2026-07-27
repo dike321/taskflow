@@ -13,6 +13,7 @@ import { Plus } from '../../components/common/Icons'
 import type { StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
@@ -32,6 +33,7 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 export default function StockTransactionPage({ type }: StockTransactionPageProps) {
   const { items, setItems, transactions, setTransactions } = useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
 
   const moduleKey = type === 'in' ? 'inventory.stockIn' : 'inventory.stockOut'
   const label = type === 'in' ? 'Stock In' : 'Stock Out'
@@ -120,6 +122,14 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       adjustStock(newTransaction.itemId, newTransaction.quantity)
     }
 
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'create',
+      module: moduleKey,
+      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)})${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+    })
+
     setIsModalOpen(false)
   }
 
@@ -130,6 +140,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       ),
     )
     adjustStock(transaction.itemId, transaction.quantity)
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'approve',
+      module: moduleKey,
+      description: `Approved ${label} for ${getItemName(transaction.itemId)} (${type === 'in' ? '+' : '-'}${transaction.quantity} ${getItemUnit(transaction.itemId)})`,
+    })
   }
 
   const handleReject = (transaction: StockTransaction) => {
@@ -138,6 +155,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
         t.id === transaction.id ? { ...t, status: 'rejected', approvedBy: currentUser.id, approvedAt: today() } : t,
       ),
     )
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'reject',
+      module: moduleKey,
+      description: `Rejected ${label} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)})`,
+    })
   }
 
   const columns = [

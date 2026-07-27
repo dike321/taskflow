@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from '../../pages/LoginPage'
 import MainLayout from '../../layouts/MainLayout'
 import { SessionProvider } from '../../data/session'
+import { ActivityLogProvider } from '../../data/activityLog'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
 import InventoryLayout from '../../pages/inventory/InventoryLayout'
@@ -15,6 +16,7 @@ import RolesPage from '../../pages/settings/RolesPage'
 import GeneralSettingsPage from '../../pages/settings/GeneralSettingsPage'
 import NotificationsSettingsPage from '../../pages/settings/NotificationsSettingsPage'
 import MyProfilePage from '../../pages/settings/MyProfilePage'
+import ActivityLogPage from '../../pages/settings/ActivityLogPage'
 import NotFoundPage from '../../pages/NotFoundPage'
 
 function AppRouter() {
@@ -26,7 +28,9 @@ function AppRouter() {
           path="/"
           element={
             <SessionProvider>
-              <MainLayout />
+              <ActivityLogProvider>
+                <MainLayout />
+              </ActivityLogProvider>
             </SessionProvider>
           }
         >
@@ -47,6 +51,7 @@ function AppRouter() {
             <Route path="general" element={<GeneralSettingsPage />} />
             <Route path="notifications" element={<NotificationsSettingsPage />} />
             <Route path="profile" element={<MyProfilePage />} />
+            <Route path="activity-log" element={<ActivityLogPage />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFoundPage />} />

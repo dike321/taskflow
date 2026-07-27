@@ -23,6 +23,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'inventory.history', label: 'Inventory - History', actions: ['view', 'export'] },
   { key: 'tickets', label: 'Tickets', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'settings', label: 'Settings', actions: ['view', 'edit'] },
+  { key: 'activityLog', label: 'Activity Log', actions: ['view'] },
 ]
 
 export const ALL_ACTIONS: PermissionAction[] = ['view', 'create', 'edit', 'delete', 'approve', 'export']
@@ -42,6 +43,7 @@ export const mockRoles: Role[] = [
       'inventory.history': ['view', 'export'],
       tickets: ['view', 'create', 'edit', 'delete'],
       settings: ['view', 'edit'],
+      activityLog: ['view'],
     },
   },
   {

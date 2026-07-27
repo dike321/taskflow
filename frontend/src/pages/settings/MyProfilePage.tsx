@@ -6,10 +6,12 @@ import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 import { getRoleForUser } from '../../utils/permissions'
 
 export default function MyProfilePage() {
   const { currentUser, updateCurrentUser } = useSession()
+  const { logActivity } = useActivityLog()
   const role = getRoleForUser(currentUser)
 
   const [profileForm, setProfileForm] = useState({
@@ -26,6 +28,13 @@ export default function MyProfilePage() {
   const handleProfileSubmit = (e: FormEvent) => {
     e.preventDefault()
     updateCurrentUser(profileForm)
+    logActivity({
+      userId: currentUser.id,
+      userName: profileForm.name,
+      action: 'update',
+      module: 'settings',
+      description: 'Updated own profile (name/email/phone)',
+    })
     setProfileSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
   }
@@ -44,6 +53,13 @@ export default function MyProfilePage() {
     }
 
     setPasswordForm({ current: '', next: '', confirm: '' })
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'update',
+      module: 'settings',
+      description: 'Changed account password',
+    })
     setPasswordSaved(true)
     setTimeout(() => setPasswordSaved(false), 2000)
   }

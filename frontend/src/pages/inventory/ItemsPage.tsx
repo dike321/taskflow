@@ -13,6 +13,7 @@ import { Pencil, Trash2, Plus } from '../../components/common/Icons'
 import { CATEGORIES, UNITS } from '../../data/inventory'
 import type { Item } from '../../data/inventory'
 import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
@@ -22,6 +23,7 @@ const emptyFormData = { sku: '', name: '', category: CATEGORIES[0], unit: UNITS[
 export default function ItemsPage() {
   const { items, setItems } = useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
@@ -80,6 +82,13 @@ export default function ItemsPage() {
   const confirmDelete = () => {
     if (deleteTarget) {
       setItems(items.filter((item) => item.id !== deleteTarget.id))
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'delete',
+        module: 'inventory.items',
+        description: `Deleted item ${deleteTarget.sku} (${deleteTarget.name})`,
+      })
     }
     setDeleteTarget(null)
   }
@@ -89,12 +98,26 @@ export default function ItemsPage() {
 
     if (editingItem) {
       setItems(items.map((item) => (item.id === editingItem.id ? { ...item, ...formData } : item)))
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'update',
+        module: 'inventory.items',
+        description: `Updated item ${formData.sku} (${formData.name})`,
+      })
     } else {
       const newItem: Item = {
         id: Math.max(...items.map((i) => i.id), 0) + 1,
         ...formData,
       }
       setItems([...items, newItem])
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'create',
+        module: 'inventory.items',
+        description: `Created item ${newItem.sku} (${newItem.name})`,
+      })
     }
 
     setIsModalOpen(false)

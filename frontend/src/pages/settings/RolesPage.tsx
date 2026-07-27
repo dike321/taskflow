@@ -10,6 +10,8 @@ import { Pencil, Trash2, Plus } from '../../components/common/Icons'
 import { mockRoles, MODULES, ALL_ACTIONS } from '../../data/roles'
 import type { Role, PermissionAction } from '../../data/roles'
 import { mockUsers } from '../../data/users'
+import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 
 interface RoleFormData {
   name: string
@@ -20,6 +22,8 @@ interface RoleFormData {
 const emptyFormData: RoleFormData = { name: '', description: '', permissions: {} }
 
 export default function RolesPage() {
+  const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
   const [roles, setRoles] = useState<Role[]>(mockRoles)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -46,6 +50,13 @@ export default function RolesPage() {
   const confirmDelete = () => {
     if (deleteTarget && !isRoleInUse(deleteTarget.id)) {
       setRoles(roles.filter((role) => role.id !== deleteTarget.id))
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'delete',
+        module: 'roles',
+        description: `Deleted role ${deleteTarget.name}`,
+      })
     }
     setDeleteTarget(null)
   }
@@ -66,12 +77,26 @@ export default function RolesPage() {
 
     if (editingRole) {
       setRoles(roles.map((role) => (role.id === editingRole.id ? { ...role, ...formData } : role)))
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'update',
+        module: 'roles',
+        description: `Updated role ${formData.name}`,
+      })
     } else {
       const newRole: Role = {
         id: Math.max(...roles.map((r) => r.id), 0) + 1,
         ...formData,
       }
       setRoles([...roles, newRole])
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'create',
+        module: 'roles',
+        description: `Created role ${newRole.name}`,
+      })
     }
 
     setIsModalOpen(false)

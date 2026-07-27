@@ -14,6 +14,8 @@ import { mockUsers, DEPARTMENTS } from '../data/users'
 import type { User } from '../data/users'
 import { mockRoles } from '../data/roles'
 import type { Role } from '../data/roles'
+import { useSession } from '../data/session'
+import { useActivityLog } from '../data/activityLog'
 
 const badgeVariants: Array<'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info'> = [
   'primary',
@@ -28,6 +30,8 @@ const getRoleVariant = (roleId: number) => badgeVariants[(roleId - 1) % badgeVar
 const getRoleName = (roleId: number) => mockRoles.find((role) => role.id === roleId)?.name ?? 'Unknown'
 
 export default function UsersPage() {
+  const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
   const [users, setUsers] = useState<User[]>(mockUsers)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -86,6 +90,13 @@ export default function UsersPage() {
   const confirmDelete = () => {
     if (deleteTarget) {
       setUsers(users.filter((user) => user.id !== deleteTarget.id))
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'delete',
+        module: 'users',
+        description: `Deleted user ${deleteTarget.name}`,
+      })
     }
     setDeleteTarget(null)
   }
@@ -114,6 +125,13 @@ export default function UsersPage() {
             : user,
         ),
       )
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'update',
+        module: 'users',
+        description: `Updated user ${formData.name}`,
+      })
     } else {
       const newUser: User = {
         id: Math.max(...users.map((u) => u.id)) + 1,
@@ -122,6 +140,13 @@ export default function UsersPage() {
         createdAt: new Date().toISOString().split('T')[0],
       }
       setUsers([...users, newUser])
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'create',
+        module: 'users',
+        description: `Created user ${newUser.name}`,
+      })
     }
 
     setIsModalOpen(false)

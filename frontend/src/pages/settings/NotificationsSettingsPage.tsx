@@ -4,6 +4,7 @@ import Card from '../../components/ui/Card'
 import { mockNotificationPreferences } from '../../data/settings'
 import type { NotificationPreferences } from '../../data/settings'
 import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 
 const toggles: { key: keyof NotificationPreferences; label: string; description: string }[] = [
@@ -26,12 +27,21 @@ const toggles: { key: keyof NotificationPreferences; label: string; description:
 
 export default function NotificationsSettingsPage() {
   const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
   const canEdit = hasPermission(currentUser, 'settings', 'edit')
 
   const [preferences, setPreferences] = useState<NotificationPreferences>(mockNotificationPreferences)
 
-  const togglePreference = (key: keyof NotificationPreferences) => {
-    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }))
+  const togglePreference = (toggle: (typeof toggles)[number]) => {
+    const nextValue = !preferences[toggle.key]
+    setPreferences((prev) => ({ ...prev, [toggle.key]: nextValue }))
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'update',
+      module: 'settings',
+      description: `Turned ${nextValue ? 'on' : 'off'} notification preference: ${toggle.label}`,
+    })
   }
 
   return (
@@ -52,7 +62,7 @@ export default function NotificationsSettingsPage() {
               <Form.Check
                 type="switch"
                 checked={preferences[toggle.key]}
-                onChange={() => togglePreference(toggle.key)}
+                onChange={() => togglePreference(toggle)}
                 disabled={!canEdit}
               />
             </div>

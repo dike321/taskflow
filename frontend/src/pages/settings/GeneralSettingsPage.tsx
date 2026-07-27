@@ -7,10 +7,12 @@ import Button from '../../components/ui/Button'
 import { mockCompanyProfile } from '../../data/settings'
 import type { CompanyProfile } from '../../data/settings'
 import { useSession } from '../../data/session'
+import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 
 export default function GeneralSettingsPage() {
   const { currentUser } = useSession()
+  const { logActivity } = useActivityLog()
   const canEdit = hasPermission(currentUser, 'settings', 'edit')
 
   const [formData, setFormData] = useState<CompanyProfile>(mockCompanyProfile)
@@ -18,6 +20,13 @@ export default function GeneralSettingsPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'update',
+      module: 'settings',
+      description: `Updated company profile (${formData.name})`,
+    })
     setSavedMessage(true)
     setTimeout(() => setSavedMessage(false), 2000)
   }
