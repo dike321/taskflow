@@ -12,7 +12,7 @@ import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
 import { CATEGORIES, UNITS } from '../../data/inventory'
 import type { Item } from '../../data/inventory'
-import { currentUser } from '../../data/session'
+import { useSession } from '../../data/session'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
@@ -21,6 +21,7 @@ const emptyFormData = { sku: '', name: '', category: CATEGORIES[0], unit: UNITS[
 
 export default function ItemsPage() {
   const { items, setItems } = useOutletContext<InventoryContext>()
+  const { currentUser } = useSession()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)

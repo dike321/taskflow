@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
 import { LayoutDashboard, Users, Package, Ticket, Settings, ChevronDown, LogOut } from './Icons'
-import { currentUser } from '../../data/session'
+import { useSession } from '../../data/session'
 import { hasModuleAccess } from '../../utils/permissions'
 
 export const SIDEBAR_WIDTH = 256
@@ -36,12 +36,18 @@ const menuItems: MenuItem[] = [
     icon: Settings,
     label: 'Settings',
     modules: ['settings', 'roles'],
-    children: [{ path: '/settings/roles', label: 'Role', module: 'roles' }],
+    children: [
+      { path: '/settings/roles', label: 'Roles', module: 'roles' },
+      { path: '/settings/general', label: 'General', module: 'settings' },
+      { path: '/settings/notifications', label: 'Notifications', module: 'settings' },
+      { path: '/settings/profile', label: 'My Profile', module: 'settings' },
+    ],
   },
 ]
 
 export default function Sidebar() {
   const location = useLocation()
+  const { currentUser } = useSession()
 
   const [expanded, setExpanded] = useState<string | null>(() => {
     const activeParent = menuItems.find((item) => item.children && location.pathname.startsWith(item.path))

@@ -10,7 +10,7 @@ import Badge from '../../components/ui/Badge'
 import { Download } from '../../components/common/Icons'
 import type { StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
-import { currentUser } from '../../data/session'
+import { useSession } from '../../data/session'
 import { hasPermission } from '../../utils/permissions'
 import type { InventoryContext } from './InventoryLayout'
 
@@ -27,6 +27,7 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 
 export default function StockHistoryPage() {
   const { items, transactions } = useOutletContext<InventoryContext>()
+  const { currentUser } = useSession()
 
   const canExport = hasPermission(currentUser, 'inventory.history', 'export')
 

@@ -1,10 +1,11 @@
 import { Form } from 'react-bootstrap'
 import { Bell, Search, User } from './Icons'
 import { SIDEBAR_WIDTH } from './Sidebar'
-import { currentUser } from '../../data/session'
+import { useSession } from '../../data/session'
 import { getRoleForUser } from '../../utils/permissions'
 
 export default function Header() {
+  const { currentUser } = useSession()
   const role = getRoleForUser(currentUser)
 
   return (

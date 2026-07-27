@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from '../../pages/LoginPage'
 import MainLayout from '../../layouts/MainLayout'
+import { SessionProvider } from '../../data/session'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
 import InventoryLayout from '../../pages/inventory/InventoryLayout'
@@ -11,6 +12,9 @@ import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import TicketsPage from '../../pages/TicketsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
+import GeneralSettingsPage from '../../pages/settings/GeneralSettingsPage'
+import NotificationsSettingsPage from '../../pages/settings/NotificationsSettingsPage'
+import MyProfilePage from '../../pages/settings/MyProfilePage'
 import NotFoundPage from '../../pages/NotFoundPage'
 
 function AppRouter() {
@@ -18,7 +22,14 @@ function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<MainLayout />}>
+        <Route
+          path="/"
+          element={
+            <SessionProvider>
+              <MainLayout />
+            </SessionProvider>
+          }
+        >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
@@ -33,6 +44,9 @@ function AppRouter() {
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="roles" replace />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="general" element={<GeneralSettingsPage />} />
+            <Route path="notifications" element={<NotificationsSettingsPage />} />
+            <Route path="profile" element={<MyProfilePage />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFoundPage />} />

@@ -12,7 +12,7 @@ import Badge from '../../components/ui/Badge'
 import { Plus } from '../../components/common/Icons'
 import type { StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
-import { currentUser } from '../../data/session'
+import { useSession } from '../../data/session'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
@@ -31,6 +31,7 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 
 export default function StockTransactionPage({ type }: StockTransactionPageProps) {
   const { items, setItems, transactions, setTransactions } = useOutletContext<InventoryContext>()
+  const { currentUser } = useSession()
 
   const moduleKey = type === 'in' ? 'inventory.stockIn' : 'inventory.stockOut'
   const label = type === 'in' ? 'Stock In' : 'Stock Out'
