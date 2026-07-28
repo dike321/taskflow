@@ -1,13 +1,14 @@
 import { Form } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import Dropdown from '../ui/Dropdown'
-import { Bell, Search, User } from './Icons'
+import { Bell, Search, User, Users } from './Icons'
 import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
+import { mockUsers } from '../../data/users'
 import { getRoleForUser } from '../../utils/permissions'
 
 export default function Header() {
-  const { currentUser } = useSession()
+  const { currentUser, switchUser } = useSession()
   const role = getRoleForUser(currentUser)
 
   return (
@@ -34,6 +35,33 @@ export default function Header() {
               style={{ width: 8, height: 8, top: 8, right: 8 }}
             />
           </button>
+
+          <Dropdown align="end">
+            <Dropdown.Toggle
+              as="button"
+              id="switch-user-menu"
+              bsPrefix="switch-user-toggle"
+              className="btn btn-light position-relative rounded-3 p-2 border-0"
+              title="Switch user (testing)"
+            >
+              <Users size={20} />
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Header>Switch User (testing)</Dropdown.Header>
+              {mockUsers.map((user) => (
+                <Dropdown.Item
+                  key={user.id}
+                  active={user.id === currentUser.id}
+                  onClick={() => switchUser(user.id)}
+                >
+                  <div className="d-flex flex-column">
+                    <span>{user.name}</span>
+                    <span className="text-muted small">{getRoleForUser(user)?.name ?? 'Unknown Role'}</span>
+                  </div>
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown>
 
           <Dropdown align="end">
             <Dropdown.Toggle

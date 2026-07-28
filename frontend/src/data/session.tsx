@@ -6,6 +6,7 @@ import type { User } from './users'
 interface SessionContextValue {
   currentUser: User
   updateCurrentUser: (updates: Partial<User>) => void
+  switchUser: (userId: number) => void
 }
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined)
@@ -17,7 +18,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCurrentUser((prev) => ({ ...prev, ...updates }))
   }
 
-  return <SessionContext.Provider value={{ currentUser, updateCurrentUser }}>{children}</SessionContext.Provider>
+  const switchUser = (userId: number) => {
+    const user = mockUsers.find((u) => u.id === userId)
+    if (user) setCurrentUser(user)
+  }
+
+  return (
+    <SessionContext.Provider value={{ currentUser, updateCurrentUser, switchUser }}>
+      {children}
+    </SessionContext.Provider>
+  )
 }
 
 export function useSession() {
