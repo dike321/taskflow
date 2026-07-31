@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Row, Col } from 'react-bootstrap'
-import Card from '../../components/ui/Card'
-import Table from '../../components/ui/Table'
-import Select from '../../components/ui/Select'
-import Input from '../../components/ui/Input'
-import Badge from '../../components/ui/Badge'
-import { useActivityLog } from '../../data/activityLog'
-import type { ActivityAction, ActivityLogEntry } from '../../data/activityLog'
-import { mockUsers } from '../../data/users'
-import { MODULES } from '../../data/roles'
+import Card from '../components/ui/Card'
+import Table from '../components/ui/Table'
+import Select from '../components/ui/Select'
+import Input from '../components/ui/Input'
+import Badge from '../components/ui/Badge'
+import { useActivityLog } from '../data/activityLog'
+import type { ActivityAction, ActivityLogEntry } from '../data/activityLog'
+import { mockUsers } from '../data/users'
+import { MODULES } from '../data/roles'
 
 const actionVariant: Record<ActivityAction, 'success' | 'primary' | 'danger' | 'warning'> = {
   create: 'success',

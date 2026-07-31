@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
-import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, Ticket, Settings, ChevronDown, LogOut } from './Icons'
+import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, Settings, ChevronDown, LogOut } from './Icons'
 import { useSession } from '../../data/session'
 import { hasModuleAccess, hasPermission } from '../../utils/permissions'
 
@@ -33,16 +33,15 @@ const menuItems: MenuItem[] = [
   { path: '/approvals', icon: ClipboardCheck, label: 'Approvals', modules: ['approvals'] },
   { path: '/warehouses', icon: Warehouse, label: 'Warehouses', modules: ['warehouses'] },
   { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
-  { path: '/tickets', icon: Ticket, label: 'Tickets', modules: ['tickets'] },
+  { path: '/activity-log', icon: History, label: 'Activity Log', modules: ['activityLog'] },
   {
     path: '/settings',
     icon: Settings,
     label: 'Settings',
-    modules: ['roles', 'inventory.items', 'activityLog'],
+    modules: ['roles', 'inventory.items'],
     children: [
       { path: '/settings/roles', label: 'Roles', module: 'roles' },
       { path: '/settings/items', label: 'Items', module: 'inventory.items' },
-      { path: '/settings/activity-log', label: 'Activity Log', module: 'activityLog' },
     ],
   },
 ]

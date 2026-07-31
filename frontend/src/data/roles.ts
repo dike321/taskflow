@@ -24,7 +24,6 @@ export const MODULES: ModuleDef[] = [
   { key: 'inventory.transfer', label: 'Inventory - Transfer', actions: ['view', 'create', 'approve'] },
   { key: 'suppliers', label: 'Suppliers', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'warehouses', label: 'Warehouses', actions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'tickets', label: 'Tickets', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'settings', label: 'Settings', actions: ['view', 'edit'] },
   { key: 'activityLog', label: 'Activity Log', actions: ['view'] },
 ]
@@ -47,7 +46,6 @@ export const mockRoles: Role[] = [
       'inventory.transfer': ['view', 'create', 'approve'],
       suppliers: ['view', 'create', 'edit', 'delete'],
       warehouses: ['view', 'create', 'edit', 'delete'],
-      tickets: ['view', 'create', 'edit', 'delete'],
       settings: ['view', 'edit'],
       activityLog: ['view'],
     },

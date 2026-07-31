@@ -17,14 +17,13 @@ import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
 import ApprovalsPage from '../../pages/ApprovalsPage'
-import TicketsPage from '../../pages/TicketsPage'
+import ActivityLogPage from '../../pages/ActivityLogPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
 import ItemsPage from '../../pages/settings/ItemsPage'
 import GeneralSettingsPage from '../../pages/settings/GeneralSettingsPage'
 import NotificationsSettingsPage from '../../pages/settings/NotificationsSettingsPage'
 import MyProfilePage from '../../pages/settings/MyProfilePage'
-import ActivityLogPage from '../../pages/settings/ActivityLogPage'
 import NotFoundPage from '../../pages/NotFoundPage'
 
 function AppRouter() {
@@ -63,7 +62,7 @@ function AppRouter() {
           <Route path="approvals" element={<ApprovalsPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="warehouses" element={<WarehousesPage />} />
-          <Route path="tickets" element={<TicketsPage />} />
+          <Route path="activity-log" element={<ActivityLogPage />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="roles" replace />} />
             <Route path="roles" element={<RolesPage />} />
@@ -71,7 +70,6 @@ function AppRouter() {
             <Route path="general" element={<GeneralSettingsPage />} />
             <Route path="notifications" element={<NotificationsSettingsPage />} />
             <Route path="profile" element={<MyProfilePage />} />
-            <Route path="activity-log" element={<ActivityLogPage />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFoundPage />} />
