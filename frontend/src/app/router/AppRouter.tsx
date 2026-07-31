@@ -5,17 +5,22 @@ import { SessionProvider } from '../../data/session'
 import { ActivityLogProvider } from '../../data/activityLog'
 import { InventoryDataProvider } from '../../data/inventory'
 import { SuppliersProvider } from '../../data/suppliers'
+import { WarehousesProvider } from '../../data/warehouses'
+import { ApprovalSettingsProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
 import InventoryLayout from '../../pages/inventory/InventoryLayout'
-import ItemsPage from '../../pages/inventory/ItemsPage'
 import StockInPage from '../../pages/inventory/StockInPage'
 import StockOutPage from '../../pages/inventory/StockOutPage'
+import StockTransferPage from '../../pages/inventory/StockTransferPage'
 import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
+import WarehousesPage from '../../pages/WarehousesPage'
+import ApprovalsPage from '../../pages/ApprovalsPage'
 import TicketsPage from '../../pages/TicketsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
+import ItemsPage from '../../pages/settings/ItemsPage'
 import GeneralSettingsPage from '../../pages/settings/GeneralSettingsPage'
 import NotificationsSettingsPage from '../../pages/settings/NotificationsSettingsPage'
 import MyProfilePage from '../../pages/settings/MyProfilePage'
@@ -34,7 +39,11 @@ function AppRouter() {
               <ActivityLogProvider>
                 <InventoryDataProvider>
                   <SuppliersProvider>
-                    <MainLayout />
+                    <WarehousesProvider>
+                      <ApprovalSettingsProvider>
+                        <MainLayout />
+                      </ApprovalSettingsProvider>
+                    </WarehousesProvider>
                   </SuppliersProvider>
                 </InventoryDataProvider>
               </ActivityLogProvider>
@@ -45,17 +54,20 @@ function AppRouter() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="inventory" element={<InventoryLayout />}>
-            <Route index element={<Navigate to="items" replace />} />
-            <Route path="items" element={<ItemsPage />} />
+            <Route index element={<Navigate to="stock-in" replace />} />
             <Route path="stock-in" element={<StockInPage />} />
             <Route path="stock-out" element={<StockOutPage />} />
+            <Route path="transfer" element={<StockTransferPage />} />
             <Route path="history" element={<StockHistoryPage />} />
           </Route>
+          <Route path="approvals" element={<ApprovalsPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="warehouses" element={<WarehousesPage />} />
           <Route path="tickets" element={<TicketsPage />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="roles" replace />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="items" element={<ItemsPage />} />
             <Route path="general" element={<GeneralSettingsPage />} />
             <Route path="notifications" element={<NotificationsSettingsPage />} />
             <Route path="profile" element={<MyProfilePage />} />

@@ -133,3 +133,28 @@ export const Truck = ({ size = 20, className = "" }: { size?: number; className?
     <circle cx="7" cy="18" r="2" />
   </svg>
 )
+
+export const ClipboardCheck = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect width="8" height="4" x="8" y="2" rx="1" />
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <path d="m9 14 2 2 4-4" />
+  </svg>
+)
+
+export const Warehouse = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 8.35V20a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8.35a2 2 0 0 1 1.26-1.86l7-2.8a2 2 0 0 1 1.48 0l7 2.8A2 2 0 0 1 22 8.35Z" />
+    <path d="M6 18h12" />
+    <path d="M6 14h12" />
+  </svg>
+)
+
+export const ArrowLeftRight = ({ size = 20, className = "" }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m16 3 4 4-4 4" />
+    <path d="M20 7H4" />
+    <path d="m8 21-4-4 4-4" />
+    <path d="M4 17h16" />
+  </svg>
+)

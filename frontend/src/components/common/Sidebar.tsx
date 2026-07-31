@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
-import { LayoutDashboard, Users, Package, Truck, Ticket, Settings, ChevronDown, LogOut } from './Icons'
+import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, Ticket, Settings, ChevronDown, LogOut } from './Icons'
 import { useSession } from '../../data/session'
-import { hasModuleAccess } from '../../utils/permissions'
+import { hasModuleAccess, hasPermission } from '../../utils/permissions'
 
 export const SIDEBAR_WIDTH = 256
 
@@ -28,17 +28,20 @@ const menuItems: MenuItem[] = [
     path: '/inventory',
     icon: Package,
     label: 'Inventory',
-    modules: ['inventory.items', 'inventory.stockIn', 'inventory.stockOut', 'inventory.history'],
+    modules: ['inventory.stockIn', 'inventory.stockOut', 'inventory.transfer', 'inventory.history'],
   },
+  { path: '/approvals', icon: ClipboardCheck, label: 'Approvals', modules: ['approvals'] },
+  { path: '/warehouses', icon: Warehouse, label: 'Warehouses', modules: ['warehouses'] },
   { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
   { path: '/tickets', icon: Ticket, label: 'Tickets', modules: ['tickets'] },
   {
     path: '/settings',
     icon: Settings,
     label: 'Settings',
-    modules: ['roles', 'activityLog'],
+    modules: ['roles', 'inventory.items', 'activityLog'],
     children: [
       { path: '/settings/roles', label: 'Roles', module: 'roles' },
+      { path: '/settings/items', label: 'Items', module: 'inventory.items' },
       { path: '/settings/activity-log', label: 'Activity Log', module: 'activityLog' },
     ],
   },
@@ -53,8 +56,16 @@ export default function Sidebar() {
     return activeParent?.path ?? null
   })
 
+  const canApproveAny =
+    hasPermission(currentUser, 'inventory.stockIn', 'approve') ||
+    hasPermission(currentUser, 'inventory.stockOut', 'approve')
+
   const visibleMenuItems = menuItems
-    .filter((item) => item.modules.some((module) => hasModuleAccess(currentUser, module)))
+    .filter((item) =>
+      item.modules.includes('approvals')
+        ? canApproveAny
+        : item.modules.some((module) => hasModuleAccess(currentUser, module)),
+    )
     .map((item) => ({
       ...item,
       children: item.children?.filter((child) => hasModuleAccess(currentUser, child.module)),

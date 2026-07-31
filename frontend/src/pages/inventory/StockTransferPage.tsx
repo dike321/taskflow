@@ -15,16 +15,11 @@ import type { StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
-import { useSuppliers } from '../../data/suppliers'
 import { useApprovalSettings } from '../../data/settings'
 import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
-
-interface StockTransactionPageProps {
-  type: 'in' | 'out'
-}
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -34,32 +29,27 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
   rejected: 'danger',
 }
 
-export default function StockTransactionPage({ type }: StockTransactionPageProps) {
+export default function StockTransferPage() {
   const { items, transactions, setTransactions, warehouseStock, setWarehouseStock } =
     useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
-  const { suppliers } = useSuppliers()
   const { approvalThreshold } = useApprovalSettings()
   const { warehouses } = useWarehouses()
 
-  const moduleKey = type === 'in' ? 'inventory.stockIn' : 'inventory.stockOut'
-  const label = type === 'in' ? 'Stock In' : 'Stock Out'
-  const canCreate = hasPermission(currentUser, moduleKey, 'create')
-  const canApprove = hasPermission(currentUser, moduleKey, 'approve')
+  const canCreate = hasPermission(currentUser, 'inventory.transfer', 'create')
+  const canApprove = hasPermission(currentUser, 'inventory.transfer', 'approve')
 
   const activeUsers = mockUsers.filter((user) => user.status === 'active')
-  const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'active')
   const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'active')
 
   const buildEmptyFormData = () => ({
     itemId: items[0]?.id ?? 0,
-    warehouseId: activeWarehouses[0]?.id ?? 0,
+    fromWarehouseId: activeWarehouses[0]?.id ?? 0,
+    toWarehouseId: activeWarehouses[1]?.id ?? activeWarehouses[0]?.id ?? 0,
     quantity: 0,
     date: today(),
     picId: currentUser.id,
-    reference: '',
-    supplierId: 0,
     note: '',
   })
 
@@ -68,29 +58,33 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const [itemFilter, setItemFilter] = useState('all')
-  const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [fromFilter, setFromFilter] = useState('all')
+  const [toFilter, setToFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const typeTransactions = useMemo(() => transactions.filter((t) => t.type === type), [transactions, type])
+  const transferTransactions = useMemo(() => transactions.filter((t) => t.type === 'transfer'), [transactions])
 
   const filteredTransactions = useMemo(() => {
-    return typeTransactions.filter((t) => {
+    return transferTransactions.filter((t) => {
       const matchesItem = itemFilter === 'all' || t.itemId === Number(itemFilter)
-      const matchesWarehouse = warehouseFilter === 'all' || t.warehouseId === Number(warehouseFilter)
+      const matchesFrom = fromFilter === 'all' || t.fromWarehouseId === Number(fromFilter)
+      const matchesTo = toFilter === 'all' || t.toWarehouseId === Number(toFilter)
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter
-      return matchesItem && matchesWarehouse && matchesStatus
+      return matchesItem && matchesFrom && matchesTo && matchesStatus
     })
-  }, [typeTransactions, itemFilter, warehouseFilter, statusFilter])
+  }, [transferTransactions, itemFilter, fromFilter, toFilter, statusFilter])
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
   const getUserName = (userId?: number) => mockUsers.find((user) => user.id === userId)?.name ?? '-'
-  const getSupplierName = (supplierId?: number) => suppliers.find((supplier) => supplier.id === supplierId)?.name ?? '-'
   const getWarehouseName = (warehouseId?: number) =>
     warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
 
-  const adjustStock = (itemId: number, warehouseId: number, quantity: number) => {
-    setWarehouseStock((prev) => adjustWarehouseStock(prev, itemId, warehouseId, type === 'in' ? quantity : -quantity))
+  const moveStock = (itemId: number, fromWarehouseId: number, toWarehouseId: number, quantity: number) => {
+    setWarehouseStock((prev) => {
+      const decremented = adjustWarehouseStock(prev, itemId, fromWarehouseId, -quantity)
+      return adjustWarehouseStock(decremented, itemId, toWarehouseId, quantity)
+    })
   }
 
   const handleAdd = () => {
@@ -107,15 +101,15 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       return
     }
 
-    if (!formData.warehouseId) {
-      setFormError('Please select a warehouse')
+    if (formData.fromWarehouseId === formData.toWarehouseId) {
+      setFormError('Source and destination warehouse must be different')
       return
     }
 
     const selectedItem = items.find((item) => item.id === formData.itemId)
-    const availableAtWarehouse = getStockQuantity(warehouseStock, formData.itemId, formData.warehouseId)
-    if (type === 'out' && selectedItem && formData.quantity > availableAtWarehouse) {
-      setFormError(`Quantity exceeds available stock at this warehouse (${availableAtWarehouse} ${selectedItem.unit})`)
+    const availableAtSource = getStockQuantity(warehouseStock, formData.itemId, formData.fromWarehouseId)
+    if (selectedItem && formData.quantity > availableAtSource) {
+      setFormError(`Quantity exceeds available stock at source warehouse (${availableAtSource} ${selectedItem.unit})`)
       return
     }
 
@@ -125,31 +119,30 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     const newTransaction: StockTransaction = {
       id: Math.max(...transactions.map((t) => t.id), 0) + 1,
       itemId: formData.itemId,
-      type,
+      type: 'transfer',
       quantity: formData.quantity,
       date: formData.date,
       picId: formData.picId,
       status: approvedNow ? 'approved' : 'pending',
       approvedBy: approvedNow ? currentUser.id : undefined,
       approvedAt: approvedNow ? today() : undefined,
-      reference: formData.reference || undefined,
-      supplierId: type === 'in' && formData.supplierId ? formData.supplierId : undefined,
       note: formData.note || undefined,
-      warehouseId: formData.warehouseId,
+      fromWarehouseId: formData.fromWarehouseId,
+      toWarehouseId: formData.toWarehouseId,
     }
 
     setTransactions([...transactions, newTransaction])
 
     if (approvedNow) {
-      adjustStock(newTransaction.itemId, newTransaction.warehouseId!, newTransaction.quantity)
+      moveStock(newTransaction.itemId, formData.fromWarehouseId, formData.toWarehouseId, newTransaction.quantity)
     }
 
     logActivity({
       userId: currentUser.id,
       userName: currentUser.name,
       action: 'create',
-      module: moduleKey,
-      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+      module: 'inventory.transfer',
+      description: `Created Transfer for ${getItemName(newTransaction.itemId)} (${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) from ${getWarehouseName(formData.fromWarehouseId)} to ${getWarehouseName(formData.toWarehouseId)}`,
     })
 
     setIsModalOpen(false)
@@ -161,13 +154,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
         t.id === transaction.id ? { ...t, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : t,
       ),
     )
-    adjustStock(transaction.itemId, transaction.warehouseId!, transaction.quantity)
+    moveStock(transaction.itemId, transaction.fromWarehouseId!, transaction.toWarehouseId!, transaction.quantity)
     logActivity({
       userId: currentUser.id,
       userName: currentUser.name,
       action: 'approve',
-      module: moduleKey,
-      description: `Approved ${label} for ${getItemName(transaction.itemId)} (${type === 'in' ? '+' : '-'}${transaction.quantity} ${getItemUnit(transaction.itemId)}) at ${getWarehouseName(transaction.warehouseId)}`,
+      module: 'inventory.transfer',
+      description: `Approved Transfer for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) from ${getWarehouseName(transaction.fromWarehouseId)} to ${getWarehouseName(transaction.toWarehouseId)}`,
     })
   }
 
@@ -181,8 +174,8 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       userId: currentUser.id,
       userName: currentUser.name,
       action: 'reject',
-      module: moduleKey,
-      description: `Rejected ${label} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) at ${getWarehouseName(transaction.warehouseId)}`,
+      module: 'inventory.transfer',
+      description: `Rejected Transfer for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) from ${getWarehouseName(transaction.fromWarehouseId)} to ${getWarehouseName(transaction.toWarehouseId)}`,
     })
   }
 
@@ -194,12 +187,16 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       header: 'Quantity',
       render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
     },
-    { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => getWarehouseName(t.warehouseId) },
+    {
+      key: 'route',
+      header: 'From → To',
+      render: (t: StockTransaction) => (
+        <span>
+          {getWarehouseName(t.fromWarehouseId)} <span className="text-muted">→</span> {getWarehouseName(t.toWarehouseId)}
+        </span>
+      ),
+    },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
-    ...(type === 'in'
-      ? [{ key: 'supplier', header: 'Supplier', render: (t: StockTransaction) => getSupplierName(t.supplierId) }]
-      : []),
-    { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
       key: 'status',
       header: 'Status',
@@ -230,7 +227,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
         {canCreate && (
           <Button onClick={handleAdd}>
             <Plus size={18} className="me-2" />
-            Add {label}
+            Add Transfer
           </Button>
         )}
       </div>
@@ -248,7 +245,17 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             </Select>
           </Col>
           <Col xs={12} md={6} lg={3}>
-            <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
+            <Select label="From" value={fromFilter} onChange={(e) => setFromFilter(e.target.value)}>
+              <option value="all">All Warehouses</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={12} md={6} lg={3}>
+            <Select label="To" value={toFilter} onChange={(e) => setToFilter(e.target.value)}>
               <option value="all">All Warehouses</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
@@ -267,29 +274,11 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
           </Col>
         </Row>
 
-        <Table
-          columns={columns}
-          data={filteredTransactions}
-          emptyMessage={`No ${label.toLowerCase()} transactions yet`}
-        />
+        <Table columns={columns} data={filteredTransactions} emptyMessage="No transfer transactions yet" />
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Add ${label}`}>
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add Transfer">
         <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
-          <Select
-            label="Warehouse"
-            value={formData.warehouseId}
-            onChange={(e) => {
-              setFormData({ ...formData, warehouseId: Number(e.target.value) })
-              if (formError) setFormError('')
-            }}
-          >
-            {activeWarehouses.map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.name}
-              </option>
-            ))}
-          </Select>
           <Select
             label="Item"
             value={formData.itemId}
@@ -297,8 +286,36 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
           >
             {items.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name} ({getStockQuantity(warehouseStock, item.id, formData.warehouseId)} {item.unit} available
-                at this warehouse)
+                {item.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="From Warehouse"
+            value={formData.fromWarehouseId}
+            onChange={(e) => {
+              setFormData({ ...formData, fromWarehouseId: Number(e.target.value) })
+              if (formError) setFormError('')
+            }}
+          >
+            {activeWarehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name} ({getStockQuantity(warehouseStock, formData.itemId, warehouse.id)}{' '}
+                {items.find((i) => i.id === formData.itemId)?.unit} available)
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="To Warehouse"
+            value={formData.toWarehouseId}
+            onChange={(e) => {
+              setFormData({ ...formData, toWarehouseId: Number(e.target.value) })
+              if (formError) setFormError('')
+            }}
+          >
+            {activeWarehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
               </option>
             ))}
           </Select>
@@ -332,26 +349,6 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
               </option>
             ))}
           </Select>
-          {type === 'in' && (
-            <Select
-              label="Supplier"
-              value={formData.supplierId}
-              onChange={(e) => setFormData({ ...formData, supplierId: Number(e.target.value) })}
-            >
-              <option value={0}>No supplier selected</option>
-              {activeSuppliers.map((supplier) => (
-                <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
-                </option>
-              ))}
-            </Select>
-          )}
-          <Input
-            label={type === 'in' ? 'Reference (PO Number)' : 'Reference (Department / Purpose)'}
-            value={formData.reference}
-            onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-            placeholder={type === 'in' ? 'PO-2024-003' : 'IT Department'}
-          />
           <Input
             label="Note"
             value={formData.note}

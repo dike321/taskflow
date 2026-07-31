@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Row, Col } from 'react-bootstrap'
-import { useOutletContext } from 'react-router-dom'
 import Button from '../../components/ui/Button'
 import Card from '../../components/ui/Card'
 import Table from '../../components/ui/Table'
@@ -10,24 +9,26 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
-import { CATEGORIES, UNITS } from '../../data/inventory'
+import { CATEGORIES, UNITS, useInventoryData, getStockQuantity } from '../../data/inventory'
 import type { Item } from '../../data/inventory'
+import { useWarehouses } from '../../data/warehouses'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
-import type { InventoryContext } from './InventoryLayout'
 
-const emptyFormData = { sku: '', name: '', category: CATEGORIES[0], unit: UNITS[0], stock: 0, minStock: 0 }
+const emptyFormData = { sku: '', name: '', category: CATEGORIES[0], unit: UNITS[0], minStock: 0 }
 
 export default function ItemsPage() {
-  const { items, setItems } = useOutletContext<InventoryContext>()
+  const { items, setItems, warehouseStock } = useInventoryData()
+  const { warehouses } = useWarehouses()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
+  const [breakdownTarget, setBreakdownTarget] = useState<Item | null>(null)
   const [formData, setFormData] = useState(emptyFormData)
 
   const [skuQuery, setSkuQuery] = useState('')
@@ -39,22 +40,25 @@ export default function ItemsPage() {
   const canEdit = hasPermission(currentUser, 'inventory.items', 'edit')
   const canDelete = hasPermission(currentUser, 'inventory.items', 'delete')
 
+  const totalStock = (itemId: number) => getStockQuantity(warehouseStock, itemId)
+
   const filteredItems = useMemo(() => {
     const sku = skuQuery.trim().toLowerCase()
     const name = nameQuery.trim().toLowerCase()
 
     return items.filter((item) => {
+      const stock = totalStock(item.id)
       const matchesSku = !sku || item.sku.toLowerCase().includes(sku)
       const matchesName = !name || item.name.toLowerCase().includes(name)
       const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
       const matchesStock =
         stockFilter === 'all' ||
-        (stockFilter === 'low' && item.stock <= item.minStock) ||
-        (stockFilter === 'ok' && item.stock > item.minStock)
+        (stockFilter === 'low' && stock <= item.minStock) ||
+        (stockFilter === 'ok' && stock > item.minStock)
 
       return matchesSku && matchesName && matchesCategory && matchesStock
     })
-  }, [items, skuQuery, nameQuery, categoryFilter, stockFilter])
+  }, [items, warehouseStock, skuQuery, nameQuery, categoryFilter, stockFilter])
 
   const handleEdit = (item: Item) => {
     setEditingItem(item)
@@ -63,7 +67,6 @@ export default function ItemsPage() {
       name: item.name,
       category: item.category,
       unit: item.unit,
-      stock: item.stock,
       minStock: item.minStock,
     })
     setIsModalOpen(true)
@@ -129,15 +132,22 @@ export default function ItemsPage() {
     { key: 'category', header: 'Category' },
     {
       key: 'stock',
-      header: 'Stock',
-      render: (item: Item) => (
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-medium">
-            {item.stock} {item.unit}
-          </span>
-          {item.stock <= item.minStock && <Badge variant="danger">Low Stock</Badge>}
-        </div>
-      ),
+      header: 'Stock (All Warehouses)',
+      render: (item: Item) => {
+        const stock = totalStock(item.id)
+        return (
+          <button
+            type="button"
+            onClick={() => setBreakdownTarget(item)}
+            className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-2"
+          >
+            <span className="fw-medium text-body">
+              {stock} {item.unit}
+            </span>
+            {stock <= item.minStock && <Badge variant="danger">Low Stock</Badge>}
+          </button>
+        )
+      },
     },
     {
       key: 'actions',
@@ -161,6 +171,11 @@ export default function ItemsPage() {
 
   return (
     <div>
+      <div className="mb-3">
+        <h2 className="h5 fw-bold mb-1">Items</h2>
+        <p className="text-muted small mb-0">Master data barang untuk Inventory. Klik jumlah stok untuk lihat rincian per gudang.</p>
+      </div>
+
       <div className="d-flex justify-content-end mb-3">
         {canCreate && (
           <Button onClick={handleAdd}>
@@ -249,14 +264,6 @@ export default function ItemsPage() {
             ))}
           </Select>
           <Input
-            label="Stock"
-            type="text"
-            inputMode="numeric"
-            value={formData.stock}
-            onChange={(e) => setFormData({ ...formData, stock: parseIntInput(e.target.value) })}
-            required
-          />
-          <Input
             label="Minimum Stock"
             type="text"
             inputMode="numeric"
@@ -264,6 +271,12 @@ export default function ItemsPage() {
             onChange={(e) => setFormData({ ...formData, minStock: parseIntInput(e.target.value) })}
             required
           />
+          {!editingItem && (
+            <p className="text-muted small mb-0">
+              Stok awal dimulai dari 0 di semua gudang. Gunakan <strong>Stock In</strong> untuk menambah stok setelah
+              item dibuat.
+            </p>
+          )}
           <div className="d-flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-fill">
               Cancel
@@ -286,6 +299,39 @@ export default function ItemsPage() {
           <Button type="button" variant="danger" onClick={confirmDelete} className="flex-fill">
             Delete
           </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!breakdownTarget}
+        onClose={() => setBreakdownTarget(null)}
+        title={`Stock Breakdown — ${breakdownTarget?.name ?? ''}`}
+        size="sm"
+      >
+        <div className="d-flex flex-column gap-2">
+          {breakdownTarget &&
+            warehouses.map((warehouse) => {
+              const qty = getStockQuantity(warehouseStock, breakdownTarget.id, warehouse.id)
+              return (
+                <div key={warehouse.id} className="d-flex align-items-center justify-content-between py-1 border-bottom">
+                  <div>
+                    <p className="mb-0 fw-medium">{warehouse.name}</p>
+                    <p className="mb-0 text-muted small">{warehouse.code}</p>
+                  </div>
+                  <span className="fw-medium">
+                    {qty} {breakdownTarget.unit}
+                  </span>
+                </div>
+              )
+            })}
+          {breakdownTarget && (
+            <div className="d-flex align-items-center justify-content-between pt-2">
+              <span className="fw-bold">Total</span>
+              <span className="fw-bold">
+                {totalStock(breakdownTarget.id)} {breakdownTarget.unit}
+              </span>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

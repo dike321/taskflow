@@ -8,15 +8,17 @@ import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Download } from '../../components/common/Icons'
-import type { StockTransaction } from '../../data/inventory'
+import type { StockTransaction, StockTransactionType } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
+import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
 import type { InventoryContext } from './InventoryLayout'
 
-const typeVariant: Record<StockTransaction['type'], 'success' | 'danger'> = {
+const typeVariant: Record<StockTransactionType, 'success' | 'danger' | 'info'> = {
   in: 'success',
   out: 'danger',
+  transfer: 'info',
 }
 
 const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger'> = {
@@ -28,11 +30,13 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 export default function StockHistoryPage() {
   const { items, transactions } = useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
+  const { warehouses } = useWarehouses()
 
   const canExport = hasPermission(currentUser, 'inventory.history', 'export')
 
   const [itemFilter, setItemFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -40,28 +44,38 @@ export default function StockHistoryPage() {
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
   const getUserName = (userId?: number) => mockUsers.find((user) => user.id === userId)?.name ?? '-'
+  const getWarehouseName = (warehouseId?: number) =>
+    warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
+
+  const matchesWarehouse = (t: StockTransaction, warehouseId: number) =>
+    t.warehouseId === warehouseId || t.fromWarehouseId === warehouseId || t.toWarehouseId === warehouseId
 
   const filteredTransactions = useMemo(() => {
     return transactions
       .filter((t) => {
         const matchesItem = itemFilter === 'all' || t.itemId === Number(itemFilter)
         const matchesType = typeFilter === 'all' || t.type === typeFilter
+        const matchesWh = warehouseFilter === 'all' || matchesWarehouse(t, Number(warehouseFilter))
         const matchesStatus = statusFilter === 'all' || t.status === statusFilter
         const matchesFrom = !dateFrom || t.date >= dateFrom
         const matchesTo = !dateTo || t.date <= dateTo
-        return matchesItem && matchesType && matchesStatus && matchesFrom && matchesTo
+        return matchesItem && matchesType && matchesWh && matchesStatus && matchesFrom && matchesTo
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1))
-  }, [transactions, itemFilter, typeFilter, statusFilter, dateFrom, dateTo])
+  }, [transactions, itemFilter, typeFilter, warehouseFilter, statusFilter, dateFrom, dateTo])
+
+  const warehouseLabel = (t: StockTransaction) =>
+    t.type === 'transfer' ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}` : getWarehouseName(t.warehouseId)
 
   const handleExport = () => {
-    const header = ['Date', 'Type', 'Item', 'Quantity', 'Unit', 'PIC', 'Reference', 'Status', 'Note']
+    const header = ['Date', 'Type', 'Item', 'Quantity', 'Unit', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note']
     const rows = filteredTransactions.map((t) => [
       t.date,
       t.type.toUpperCase(),
       getItemName(t.itemId),
       t.quantity,
       getItemUnit(t.itemId),
+      warehouseLabel(t),
       getUserName(t.picId),
       t.reference ?? '',
       t.status,
@@ -94,6 +108,7 @@ export default function StockHistoryPage() {
       header: 'Quantity',
       render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
     },
+    { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => warehouseLabel(t) },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
@@ -116,7 +131,7 @@ export default function StockHistoryPage() {
 
       <Card>
         <Row className="g-3 mb-3">
-          <Col xs={12} md={6} lg={3}>
+          <Col xs={12} md={6} lg={2}>
             <Select label="Item" value={itemFilter} onChange={(e) => setItemFilter(e.target.value)}>
               <option value="all">All Items</option>
               {items.map((item) => (
@@ -131,6 +146,17 @@ export default function StockHistoryPage() {
               <option value="all">All Types</option>
               <option value="in">Stock In</option>
               <option value="out">Stock Out</option>
+              <option value="transfer">Transfer</option>
+            </Select>
+          </Col>
+          <Col xs={12} md={6} lg={2}>
+            <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
+              <option value="all">All Warehouses</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
             </Select>
           </Col>
           <Col xs={12} md={6} lg={2}>
