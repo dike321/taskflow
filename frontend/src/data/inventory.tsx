@@ -94,6 +94,8 @@ export interface StockTransaction {
   reference?: string
   supplierId?: number
   note?: string
+  /** Cost center: departemen pemakai barang keluar. Khusus type 'out'. */
+  department?: string
   /** Gudang tujuan (in) / gudang asal (out). Tidak dipakai untuk transfer. */
   warehouseId?: number
   /** Khusus type 'transfer' */
@@ -143,6 +145,7 @@ export const mockStockTransactions: StockTransaction[] = [
     approvedBy: 2,
     approvedAt: '2024-03-10',
     reference: 'IT Department',
+    department: 'IT',
     warehouseId: 1,
   },
   {
@@ -154,6 +157,7 @@ export const mockStockTransactions: StockTransaction[] = [
     picId: 4,
     status: 'pending',
     reference: 'Finance Department',
+    department: 'Finance',
     warehouseId: 1,
   },
   {

@@ -12,7 +12,7 @@ import Badge from '../../components/ui/Badge'
 import { Plus, Paperclip } from '../../components/common/Icons'
 import { adjustWarehouseStock, getStockQuantity } from '../../data/inventory'
 import type { Attachment, StockTransaction } from '../../data/inventory'
-import { mockUsers } from '../../data/users'
+import { mockUsers, DEPARTMENTS } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
 import { useSuppliers } from '../../data/suppliers'
@@ -60,6 +60,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     picId: currentUser.id,
     reference: '',
     supplierId: 0,
+    department: currentUser.department,
     note: '',
   })
 
@@ -143,6 +144,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       approvedAt: approvedNow ? today() : undefined,
       reference: formData.reference || undefined,
       supplierId: type === 'in' && formData.supplierId ? formData.supplierId : undefined,
+      department: type === 'out' ? formData.department : undefined,
       note: formData.note || undefined,
       warehouseId: formData.warehouseId,
       attachments: attachments.length > 0 ? attachments : undefined,
@@ -159,7 +161,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       userName: currentUser.name,
       action: 'create',
       module: moduleKey,
-      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.department ? `, dept ${newTransaction.department}` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
     })
 
     setIsModalOpen(false)
@@ -177,7 +179,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
     ...(type === 'in'
       ? [{ key: 'supplier', header: 'Supplier', render: (t: StockTransaction) => getSupplierName(t.supplierId) }]
-      : []),
+      : [{ key: 'department', header: 'Department', render: (t: StockTransaction) => t.department ?? '-' }]),
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
       key: 'attachments',
@@ -309,7 +311,11 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
           <Select
             label="PIC"
             value={formData.picId}
-            onChange={(e) => setFormData({ ...formData, picId: Number(e.target.value) })}
+            onChange={(e) => {
+              const picId = Number(e.target.value)
+              const pic = activeUsers.find((user) => user.id === picId)
+              setFormData({ ...formData, picId, department: pic?.department ?? formData.department })
+            }}
           >
             {activeUsers.map((user) => (
               <option key={user.id} value={user.id}>
@@ -317,6 +323,19 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
               </option>
             ))}
           </Select>
+          {type === 'out' && (
+            <Select
+              label="Department (Cost Center)"
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            >
+              {DEPARTMENTS.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+            </Select>
+          )}
           {type === 'in' && (
             <Select
               label="Supplier"
@@ -332,10 +351,10 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             </Select>
           )}
           <Input
-            label={type === 'in' ? 'Reference (PO Number)' : 'Reference (Department / Purpose)'}
+            label={type === 'in' ? 'Reference (PO Number)' : 'Reference (Purpose)'}
             value={formData.reference}
             onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-            placeholder={type === 'in' ? 'PO-2024-003' : 'IT Department'}
+            placeholder={type === 'in' ? 'PO-2024-003' : 'Project X kickoff'}
           />
           <Input
             label="Note"

@@ -9,7 +9,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Download, Paperclip } from '../../components/common/Icons'
 import type { Attachment, StockTransaction, StockTransactionType } from '../../data/inventory'
-import { mockUsers } from '../../data/users'
+import { DEPARTMENTS, mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
@@ -27,6 +27,7 @@ interface HistoryRow {
   warehouseIds: number[]
   picId: number
   reference: string
+  department?: string
   note?: string
   attachments?: Attachment[]
   status: StockTransaction['status']
@@ -56,6 +57,7 @@ export default function StockHistoryPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
@@ -79,6 +81,7 @@ export default function StockHistoryPage() {
       warehouseIds: [t.warehouseId, t.fromWarehouseId, t.toWarehouseId].filter((id): id is number => !!id),
       picId: t.picId,
       reference: t.reference ?? '-',
+      department: t.department,
       note: t.note,
       attachments: t.attachments,
       status: t.status,
@@ -108,15 +111,16 @@ export default function StockHistoryPage() {
         const matchesType = typeFilter === 'all' || row.type === typeFilter
         const matchesWh = warehouseFilter === 'all' || row.warehouseIds.includes(Number(warehouseFilter))
         const matchesStatus = statusFilter === 'all' || row.status === statusFilter
+        const matchesDepartment = departmentFilter === 'all' || row.department === departmentFilter
         const matchesFrom = !dateFrom || row.date >= dateFrom
         const matchesTo = !dateTo || row.date <= dateTo
-        return matchesItem && matchesType && matchesWh && matchesStatus && matchesFrom && matchesTo
+        return matchesItem && matchesType && matchesWh && matchesStatus && matchesDepartment && matchesFrom && matchesTo
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1))
-  }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, dateFrom, dateTo])
+  }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, departmentFilter, dateFrom, dateTo])
 
   const handleExport = () => {
-    const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note', 'Documents']
+    const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Department', 'Reference', 'Status', 'Note', 'Documents']
     const csvRows = filteredRows.map((row) => [
       row.date,
       row.type.toUpperCase(),
@@ -124,6 +128,7 @@ export default function StockHistoryPage() {
       row.quantityLabel,
       row.warehouseLabel,
       getUserName(row.picId),
+      row.department ?? '',
       row.reference,
       row.status,
       row.note ?? '',
@@ -154,6 +159,7 @@ export default function StockHistoryPage() {
     { key: 'quantity', header: 'Quantity', render: (row: HistoryRow) => row.quantityLabel },
     { key: 'warehouse', header: 'Warehouse', render: (row: HistoryRow) => row.warehouseLabel },
     { key: 'pic', header: 'PIC', render: (row: HistoryRow) => getUserName(row.picId) },
+    { key: 'department', header: 'Department', render: (row: HistoryRow) => row.department ?? '-' },
     { key: 'reference', header: 'Reference', render: (row: HistoryRow) => row.reference },
     {
       key: 'attachments',
@@ -233,6 +239,16 @@ export default function StockHistoryPage() {
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
+            </Select>
+          </Col>
+          <Col xs={12} md={6} lg={2}>
+            <Select label="Department" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+              <option value="all">All Departments</option>
+              {DEPARTMENTS.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
             </Select>
           </Col>
           <Col xs={12} md={6} lg={2}>

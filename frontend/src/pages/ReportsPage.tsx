@@ -11,9 +11,10 @@ import { CATEGORIES, getStockQuantity, useInventoryData } from '../data/inventor
 import type { StockOpname, StockTransaction } from '../data/inventory'
 import { useWarehouses } from '../data/warehouses'
 import { useSession } from '../data/session'
+import { DEPARTMENTS } from '../data/users'
 import { hasPermission } from '../utils/permissions'
 
-type GroupBy = 'category' | 'warehouse'
+type GroupBy = 'category' | 'warehouse' | 'department'
 
 interface ReportRow {
   key: string
@@ -25,6 +26,13 @@ interface ReportRow {
   opnameAdjustment: number
   netChange: number
   currentStock: number
+}
+
+interface DepartmentRow {
+  key: string
+  stockOut: number
+  transactionCount: number
+  percentOfTotal: number
 }
 
 function aggregate(
@@ -108,6 +116,8 @@ export default function ReportsPage() {
   )
 
   const rows = useMemo<ReportRow[]>(() => {
+    if (groupBy === 'department') return []
+
     const groupKeys =
       groupBy === 'category'
         ? CATEGORIES.filter((c) => categoryFilter === 'all' || c === categoryFilter)
@@ -143,27 +153,63 @@ export default function ReportsPage() {
     })
   }, [groupBy, categoryFilter, warehouseFilter, items, warehouses, scopedItemIds, scopedWarehouseIds, transactions, stockOpnames, dateFrom, dateTo, warehouseStock])
 
+  const departmentRows = useMemo<DepartmentRow[]>(() => {
+    if (groupBy !== 'department') return []
+
+    const withinDate = (date: string) => (!dateFrom || date >= dateFrom) && (!dateTo || date <= dateTo)
+    const itemIdSet = new Set(scopedItemIds)
+    const warehouseIdSet = new Set(scopedWarehouseIds)
+
+    const outTransactions = transactions.filter(
+      (t) =>
+        t.type === 'out' &&
+        t.status === 'approved' &&
+        itemIdSet.has(t.itemId) &&
+        t.warehouseId !== undefined &&
+        warehouseIdSet.has(t.warehouseId) &&
+        withinDate(t.date),
+    )
+    const totalStockOut = outTransactions.reduce((sum, t) => sum + t.quantity, 0)
+
+    return DEPARTMENTS.map((department) => {
+      const deptTransactions = outTransactions.filter((t) => t.department === department)
+      const stockOut = deptTransactions.reduce((sum, t) => sum + t.quantity, 0)
+      return {
+        key: department,
+        stockOut,
+        transactionCount: deptTransactions.length,
+        percentOfTotal: totalStockOut > 0 ? Math.round((stockOut / totalStockOut) * 1000) / 10 : 0,
+      }
+    }).filter((row) => row.transactionCount > 0)
+  }, [groupBy, scopedItemIds, scopedWarehouseIds, transactions, dateFrom, dateTo])
+
   const handleExportCsv = () => {
-    const header = [
-      groupBy === 'category' ? 'Category' : 'Warehouse',
-      'Stock In',
-      'Stock Out',
-      'Transfer In',
-      'Transfer Out',
-      'Opname Adjustment',
-      'Net Change',
-      'Current Stock',
-    ]
-    const csvRows = rows.map((row) => [
-      row.label,
-      row.stockIn,
-      row.stockOut,
-      row.transferIn,
-      row.transferOut,
-      row.opnameAdjustment,
-      row.netChange,
-      row.currentStock,
-    ])
+    const header =
+      groupBy === 'department'
+        ? ['Department', 'Stock Out', 'Transactions', '% of Total']
+        : [
+            groupBy === 'category' ? 'Category' : 'Warehouse',
+            'Stock In',
+            'Stock Out',
+            'Transfer In',
+            'Transfer Out',
+            'Opname Adjustment',
+            'Net Change',
+            'Current Stock',
+          ]
+    const csvRows =
+      groupBy === 'department'
+        ? departmentRows.map((row) => [row.key, row.stockOut, row.transactionCount, `${row.percentOfTotal}%`])
+        : rows.map((row) => [
+            row.label,
+            row.stockIn,
+            row.stockOut,
+            row.transferIn,
+            row.transferOut,
+            row.opnameAdjustment,
+            row.netChange,
+            row.currentStock,
+          ])
 
     const csv = [header, ...csvRows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -202,11 +248,34 @@ export default function ReportsPage() {
     { key: 'currentStock', header: 'Current Stock' },
   ]
 
+  const departmentColumns = [
+    { key: 'key', header: 'Department' },
+    { key: 'stockOut', header: 'Stock Out', render: (row: DepartmentRow) => `-${row.stockOut}` },
+    { key: 'transactionCount', header: 'Transactions' },
+    {
+      key: 'percentOfTotal',
+      header: '% of Total',
+      render: (row: DepartmentRow) => (
+        <div className="d-flex align-items-center gap-2" style={{ minWidth: 140 }}>
+          <div className="flex-grow-1 bg-light rounded" style={{ height: 6 }}>
+            <div
+              className="bg-primary rounded"
+              style={{ height: 6, width: `${row.percentOfTotal}%` }}
+            />
+          </div>
+          <span className="small text-muted" style={{ width: 40 }}>
+            {row.percentOfTotal}%
+          </span>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div>
       <PageToolbar
         title="Reports"
-        description="Mutation summary by category or warehouse, for the selected period"
+        description="Mutation summary by category, warehouse, or department (cost center), for the selected period"
         actions={
           canExport && (
             <div className="d-flex gap-2 no-print">
@@ -259,6 +328,7 @@ export default function ReportsPage() {
             <Select label="Group By" value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
               <option value="category">Category</option>
               <option value="warehouse">Warehouse</option>
+              <option value="department">Department (Cost Center)</option>
             </Select>
           </Col>
           <Col xs={12} md={6} lg={2}>
@@ -289,7 +359,15 @@ export default function ReportsPage() {
           </Col>
         </Row>
 
-        <Table columns={columns} data={rows} emptyMessage="No data for the selected filters" />
+        {groupBy === 'department' ? (
+          <Table
+            columns={departmentColumns}
+            data={departmentRows}
+            emptyMessage="No approved Stock Out transactions with a department for the selected filters"
+          />
+        ) : (
+          <Table columns={columns} data={rows} emptyMessage="No data for the selected filters" />
+        )}
       </Card>
     </div>
   )
