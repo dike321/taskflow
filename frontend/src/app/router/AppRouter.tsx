@@ -6,7 +6,7 @@ import { ActivityLogProvider } from '../../data/activityLog'
 import { InventoryDataProvider } from '../../data/inventory'
 import { SuppliersProvider } from '../../data/suppliers'
 import { WarehousesProvider } from '../../data/warehouses'
-import { ApprovalSettingsProvider } from '../../data/settings'
+import { ApprovalSettingsProvider, NotificationPreferencesProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
 import InventoryLayout from '../../pages/inventory/InventoryLayout'
@@ -40,7 +40,9 @@ function AppRouter() {
                   <SuppliersProvider>
                     <WarehousesProvider>
                       <ApprovalSettingsProvider>
-                        <MainLayout />
+                        <NotificationPreferencesProvider>
+                          <MainLayout />
+                        </NotificationPreferencesProvider>
                       </ApprovalSettingsProvider>
                     </WarehousesProvider>
                   </SuppliersProvider>

@@ -27,6 +27,29 @@ export const mockNotificationPreferences: NotificationPreferences = {
   emailNotifications: false,
 }
 
+interface NotificationPreferencesContextValue {
+  preferences: NotificationPreferences
+  setPreferences: Dispatch<SetStateAction<NotificationPreferences>>
+}
+
+const NotificationPreferencesContext = createContext<NotificationPreferencesContextValue | undefined>(undefined)
+
+export function NotificationPreferencesProvider({ children }: { children: ReactNode }) {
+  const [preferences, setPreferences] = useState<NotificationPreferences>(mockNotificationPreferences)
+
+  return (
+    <NotificationPreferencesContext.Provider value={{ preferences, setPreferences }}>
+      {children}
+    </NotificationPreferencesContext.Provider>
+  )
+}
+
+export function useNotificationPreferences() {
+  const context = useContext(NotificationPreferencesContext)
+  if (!context) throw new Error('useNotificationPreferences must be used within a NotificationPreferencesProvider')
+  return context
+}
+
 const DEFAULT_APPROVAL_THRESHOLD = 100
 
 interface ApprovalSettingsContextValue {

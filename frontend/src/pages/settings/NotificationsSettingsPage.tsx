@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import { Form } from 'react-bootstrap'
 import Card from '../../components/ui/Card'
-import { mockNotificationPreferences } from '../../data/settings'
+import { useNotificationPreferences } from '../../data/settings'
 import type { NotificationPreferences } from '../../data/settings'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
@@ -30,7 +29,7 @@ export default function NotificationsSettingsPage() {
   const { logActivity } = useActivityLog()
   const canEdit = hasPermission(currentUser, 'settings', 'edit')
 
-  const [preferences, setPreferences] = useState<NotificationPreferences>(mockNotificationPreferences)
+  const { preferences, setPreferences } = useNotificationPreferences()
 
   const togglePreference = (toggle: (typeof toggles)[number]) => {
     const nextValue = !preferences[toggle.key]

@@ -1,15 +1,78 @@
+import type { ComponentType } from 'react'
+import { useMemo } from 'react'
 import { Form } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import Dropdown from '../ui/Dropdown'
-import { Bell, Search, User, Users } from './Icons'
+import { AlertTriangle, Bell, ClipboardCheck, Search, User, Users } from './Icons'
 import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
 import { mockUsers } from '../../data/users'
-import { getRoleForUser } from '../../utils/permissions'
+import { getRoleForUser, hasModuleAccess, hasPermission } from '../../utils/permissions'
+import { getStockQuantity, useInventoryData } from '../../data/inventory'
+import type { StockTransactionType } from '../../data/inventory'
+import { useWarehouses } from '../../data/warehouses'
+import { useNotificationPreferences } from '../../data/settings'
+
+interface NotificationItem {
+  id: string
+  icon: ComponentType<{ size?: number; className?: string }>
+  variant: 'danger' | 'warning'
+  title: string
+  description: string
+  to: string
+}
+
+const moduleKeyForType = (type: StockTransactionType) =>
+  type === 'in' ? 'inventory.stockIn' : type === 'out' ? 'inventory.stockOut' : 'inventory.transfer'
+const labelForType = (type: StockTransactionType) => (type === 'in' ? 'Stock In' : type === 'out' ? 'Stock Out' : 'Transfer')
 
 export default function Header() {
   const { currentUser, switchUser } = useSession()
   const role = getRoleForUser(currentUser)
+  const { items, transactions, warehouseStock } = useInventoryData()
+  const { warehouses } = useWarehouses()
+  const { preferences } = useNotificationPreferences()
+
+  const getWarehouseName = (warehouseId?: number) =>
+    warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
+
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const lowStock: NotificationItem[] =
+      preferences.lowStockAlert && hasModuleAccess(currentUser, 'inventory.items')
+        ? items
+            .filter((item) => getStockQuantity(warehouseStock, item.id) <= item.minStock)
+            .map((item) => ({
+              id: `low-stock-${item.id}`,
+              icon: AlertTriangle,
+              variant: 'danger',
+              title: `Low stock: ${item.name}`,
+              description: `${getStockQuantity(warehouseStock, item.id)} ${item.unit} left (min ${item.minStock})`,
+              to: '/settings/items',
+            }))
+        : []
+
+    const pendingApprovals: NotificationItem[] = preferences.approvalPendingAlert
+      ? transactions
+          .filter((t) => t.status === 'pending' && hasPermission(currentUser, moduleKeyForType(t.type), 'approve'))
+          .map((t) => {
+            const item = items.find((i) => i.id === t.itemId)
+            const warehouseLabel =
+              t.type === 'transfer'
+                ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}`
+                : getWarehouseName(t.warehouseId)
+            return {
+              id: `pending-${t.id}`,
+              icon: ClipboardCheck,
+              variant: 'warning' as const,
+              title: `${labelForType(t.type)} pending: ${item?.name ?? 'Unknown'}`,
+              description: `${t.quantity} ${item?.unit ?? ''} · ${warehouseLabel}`,
+              to: '/approvals',
+            }
+          })
+      : []
+
+    return [...pendingApprovals, ...lowStock]
+  }, [items, transactions, warehouseStock, warehouses, preferences, currentUser])
 
   return (
     <header
@@ -28,13 +91,51 @@ export default function Header() {
         </div>
 
         <div className="d-flex align-items-center gap-3">
-          <button type="button" className="btn btn-light position-relative rounded-3 p-2">
-            <Bell size={20} />
-            <span
-              className="position-absolute bg-danger rounded-circle"
-              style={{ width: 8, height: 8, top: 8, right: 8 }}
-            />
-          </button>
+          <Dropdown align="end">
+            <Dropdown.Toggle
+              as="button"
+              id="notifications-menu"
+              bsPrefix="notifications-toggle"
+              className="btn btn-light position-relative rounded-3 p-2 border-0"
+            >
+              <Bell size={20} />
+              {notifications.length > 0 && (
+                <span
+                  className="position-absolute bg-danger rounded-circle"
+                  style={{ width: 8, height: 8, top: 8, right: 8 }}
+                />
+              )}
+            </Dropdown.Toggle>
+            <Dropdown.Menu style={{ width: 340, maxHeight: 400, overflowY: 'auto', overflowX: 'hidden' }}>
+              <Dropdown.Header>Notifications{notifications.length > 0 ? ` (${notifications.length})` : ''}</Dropdown.Header>
+              {notifications.length === 0 ? (
+                <p className="text-muted small mb-0 px-3 py-3 text-center">No new notifications</p>
+              ) : (
+                notifications.map((notification) => {
+                  const Icon = notification.icon
+                  return (
+                    <Dropdown.Item
+                      key={notification.id}
+                      as={Link}
+                      to={notification.to}
+                      className="d-flex align-items-start gap-2 py-2"
+                      style={{ whiteSpace: 'normal' }}
+                    >
+                      <span className={`text-${notification.variant} mt-1 flex-shrink-0`}>
+                        <Icon size={16} />
+                      </span>
+                      <span>
+                        <span className="d-block small fw-medium">{notification.title}</span>
+                        <span className="d-block text-muted" style={{ fontSize: '0.75rem' }}>
+                          {notification.description}
+                        </span>
+                      </span>
+                    </Dropdown.Item>
+                  )
+                })
+              )}
+            </Dropdown.Menu>
+          </Dropdown>
 
           <Dropdown align="end">
             <Dropdown.Toggle
