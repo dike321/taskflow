@@ -8,17 +8,35 @@ import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { Download, Paperclip } from '../../components/common/Icons'
-import type { StockTransaction, StockTransactionType } from '../../data/inventory'
+import type { Attachment, StockTransaction, StockTransactionType } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
 import type { InventoryContext } from './InventoryLayout'
 
-const typeVariant: Record<StockTransactionType, 'success' | 'danger' | 'info'> = {
+type HistoryType = StockTransactionType | 'opname'
+
+interface HistoryRow {
+  id: string
+  date: string
+  type: HistoryType
+  itemId: number
+  quantityLabel: string
+  warehouseLabel: string
+  warehouseIds: number[]
+  picId: number
+  reference: string
+  note?: string
+  attachments?: Attachment[]
+  status: StockTransaction['status']
+}
+
+const typeVariant: Record<HistoryType, 'success' | 'danger' | 'info' | 'warning'> = {
   in: 'success',
   out: 'danger',
   transfer: 'info',
+  opname: 'warning',
 }
 
 const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger'> = {
@@ -28,7 +46,7 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 }
 
 export default function StockHistoryPage() {
-  const { items, transactions } = useOutletContext<InventoryContext>()
+  const { items, transactions, stockOpnames } = useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
   const { warehouses } = useWarehouses()
 
@@ -47,43 +65,72 @@ export default function StockHistoryPage() {
   const getWarehouseName = (warehouseId?: number) =>
     warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
 
-  const matchesWarehouse = (t: StockTransaction, warehouseId: number) =>
-    t.warehouseId === warehouseId || t.fromWarehouseId === warehouseId || t.toWarehouseId === warehouseId
+  const rows = useMemo<HistoryRow[]>(() => {
+    const transactionRows: HistoryRow[] = transactions.map((t) => ({
+      id: `tx-${t.id}`,
+      date: t.date,
+      type: t.type,
+      itemId: t.itemId,
+      quantityLabel: `${t.quantity} ${getItemUnit(t.itemId)}`,
+      warehouseLabel:
+        t.type === 'transfer'
+          ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}`
+          : getWarehouseName(t.warehouseId),
+      warehouseIds: [t.warehouseId, t.fromWarehouseId, t.toWarehouseId].filter((id): id is number => !!id),
+      picId: t.picId,
+      reference: t.reference ?? '-',
+      note: t.note,
+      attachments: t.attachments,
+      status: t.status,
+    }))
 
-  const filteredTransactions = useMemo(() => {
-    return transactions
-      .filter((t) => {
-        const matchesItem = itemFilter === 'all' || t.itemId === Number(itemFilter)
-        const matchesType = typeFilter === 'all' || t.type === typeFilter
-        const matchesWh = warehouseFilter === 'all' || matchesWarehouse(t, Number(warehouseFilter))
-        const matchesStatus = statusFilter === 'all' || t.status === statusFilter
-        const matchesFrom = !dateFrom || t.date >= dateFrom
-        const matchesTo = !dateTo || t.date <= dateTo
+    const opnameRows: HistoryRow[] = stockOpnames.map((o) => ({
+      id: `opname-${o.id}`,
+      date: o.date,
+      type: 'opname',
+      itemId: o.itemId,
+      quantityLabel: `${o.difference > 0 ? '+' : ''}${o.difference} ${getItemUnit(o.itemId)}`,
+      warehouseLabel: getWarehouseName(o.warehouseId),
+      warehouseIds: [o.warehouseId],
+      picId: o.picId,
+      reference: `System ${o.systemQty} → Physical ${o.physicalQty}`,
+      note: o.note,
+      status: o.status,
+    }))
+
+    return [...transactionRows, ...opnameRows]
+  }, [transactions, stockOpnames, items, warehouses])
+
+  const filteredRows = useMemo(() => {
+    return rows
+      .filter((row) => {
+        const matchesItem = itemFilter === 'all' || row.itemId === Number(itemFilter)
+        const matchesType = typeFilter === 'all' || row.type === typeFilter
+        const matchesWh = warehouseFilter === 'all' || row.warehouseIds.includes(Number(warehouseFilter))
+        const matchesStatus = statusFilter === 'all' || row.status === statusFilter
+        const matchesFrom = !dateFrom || row.date >= dateFrom
+        const matchesTo = !dateTo || row.date <= dateTo
         return matchesItem && matchesType && matchesWh && matchesStatus && matchesFrom && matchesTo
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1))
-  }, [transactions, itemFilter, typeFilter, warehouseFilter, statusFilter, dateFrom, dateTo])
-
-  const warehouseLabel = (t: StockTransaction) =>
-    t.type === 'transfer' ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}` : getWarehouseName(t.warehouseId)
+  }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, dateFrom, dateTo])
 
   const handleExport = () => {
-    const header = ['Date', 'Type', 'Item', 'Quantity', 'Unit', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note', 'Documents']
-    const rows = filteredTransactions.map((t) => [
-      t.date,
-      t.type.toUpperCase(),
-      getItemName(t.itemId),
-      t.quantity,
-      getItemUnit(t.itemId),
-      warehouseLabel(t),
-      getUserName(t.picId),
-      t.reference ?? '',
-      t.status,
-      t.note ?? '',
-      t.attachments?.map((a) => a.name).join('; ') ?? '',
+    const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note', 'Documents']
+    const csvRows = filteredRows.map((row) => [
+      row.date,
+      row.type.toUpperCase(),
+      getItemName(row.itemId),
+      row.quantityLabel,
+      row.warehouseLabel,
+      getUserName(row.picId),
+      row.reference,
+      row.status,
+      row.note ?? '',
+      row.attachments?.map((a) => a.name).join('; ') ?? '',
     ])
 
-    const csv = [header, ...rows]
+    const csv = [header, ...csvRows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
@@ -101,24 +148,20 @@ export default function StockHistoryPage() {
     {
       key: 'type',
       header: 'Type',
-      render: (t: StockTransaction) => <Badge variant={typeVariant[t.type]}>{t.type.toUpperCase()}</Badge>,
+      render: (row: HistoryRow) => <Badge variant={typeVariant[row.type]}>{row.type.toUpperCase()}</Badge>,
     },
-    { key: 'item', header: 'Item', render: (t: StockTransaction) => getItemName(t.itemId) },
-    {
-      key: 'quantity',
-      header: 'Quantity',
-      render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
-    },
-    { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => warehouseLabel(t) },
-    { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
-    { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
+    { key: 'item', header: 'Item', render: (row: HistoryRow) => getItemName(row.itemId) },
+    { key: 'quantity', header: 'Quantity', render: (row: HistoryRow) => row.quantityLabel },
+    { key: 'warehouse', header: 'Warehouse', render: (row: HistoryRow) => row.warehouseLabel },
+    { key: 'pic', header: 'PIC', render: (row: HistoryRow) => getUserName(row.picId) },
+    { key: 'reference', header: 'Reference', render: (row: HistoryRow) => row.reference },
     {
       key: 'attachments',
       header: 'Documents',
-      render: (t: StockTransaction) =>
-        t.attachments && t.attachments.length > 0 ? (
+      render: (row: HistoryRow) =>
+        row.attachments && row.attachments.length > 0 ? (
           <div className="d-flex flex-column gap-1">
-            {t.attachments.map((a) => (
+            {row.attachments.map((a) => (
               <a
                 key={a.id}
                 href={a.url}
@@ -138,7 +181,7 @@ export default function StockHistoryPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{t.status}</Badge>,
+      render: (row: HistoryRow) => <Badge variant={statusVariant[row.status]}>{row.status}</Badge>,
     },
   ]
 
@@ -171,6 +214,7 @@ export default function StockHistoryPage() {
               <option value="in">Stock In</option>
               <option value="out">Stock Out</option>
               <option value="transfer">Transfer</option>
+              <option value="opname">Stock Opname</option>
             </Select>
           </Col>
           <Col xs={12} md={6} lg={2}>
@@ -199,7 +243,7 @@ export default function StockHistoryPage() {
           </Col>
         </Row>
 
-        <Table columns={columns} data={filteredTransactions} emptyMessage="No stock movement history yet" />
+        <Table columns={columns} data={filteredRows} emptyMessage="No stock movement history yet" />
       </Card>
     </div>
   )

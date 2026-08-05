@@ -13,6 +13,7 @@ import InventoryLayout from '../../pages/inventory/InventoryLayout'
 import StockInPage from '../../pages/inventory/StockInPage'
 import StockOutPage from '../../pages/inventory/StockOutPage'
 import StockTransferPage from '../../pages/inventory/StockTransferPage'
+import StockOpnamePage from '../../pages/inventory/StockOpnamePage'
 import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
@@ -59,6 +60,7 @@ function AppRouter() {
             <Route path="stock-in" element={<StockInPage />} />
             <Route path="stock-out" element={<StockOutPage />} />
             <Route path="transfer" element={<StockTransferPage />} />
+            <Route path="opname" element={<StockOpnamePage />} />
             <Route path="history" element={<StockHistoryPage />} />
           </Route>
           <Route path="approvals" element={<ApprovalsPage />} />

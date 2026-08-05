@@ -7,7 +7,7 @@ import Select from '../components/ui/Select'
 import Badge from '../components/ui/Badge'
 import PageToolbar from '../components/common/PageToolbar'
 import { useInventoryData, adjustWarehouseStock } from '../data/inventory'
-import type { StockTransaction, StockTransactionType } from '../data/inventory'
+import type { StockOpname, StockTransaction, StockTransactionType } from '../data/inventory'
 import { mockUsers } from '../data/users'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
@@ -24,7 +24,7 @@ const typeVariant: Record<StockTransactionType, 'success' | 'danger' | 'info'> =
 }
 
 export default function ApprovalsPage() {
-  const { items, transactions, setTransactions, setWarehouseStock } = useInventoryData()
+  const { items, transactions, setTransactions, stockOpnames, setStockOpnames, setWarehouseStock } = useInventoryData()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
   const { suppliers } = useSuppliers()
@@ -100,6 +100,85 @@ export default function ApprovalsPage() {
     })
   }
 
+  const pendingOpnames = useMemo(() => stockOpnames.filter((o) => o.status === 'pending'), [stockOpnames])
+
+  const filteredOpnames = useMemo(() => {
+    return pendingOpnames
+      .filter((o) => itemFilter === 'all' || o.itemId === Number(itemFilter))
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+  }, [pendingOpnames, itemFilter])
+
+  const handleApproveOpname = (opname: StockOpname) => {
+    setStockOpnames((prev) =>
+      prev.map((o) =>
+        o.id === opname.id ? { ...o, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : o,
+      ),
+    )
+    setWarehouseStock((prev) => adjustWarehouseStock(prev, opname.itemId, opname.warehouseId, opname.difference))
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'approve',
+      module: 'inventory.opname',
+      description: `Approved Stock Opname for ${getItemName(opname.itemId)} at ${getWarehouseName(opname.warehouseId)} (diff ${opname.difference > 0 ? '+' : ''}${opname.difference} ${getItemUnit(opname.itemId)})`,
+    })
+  }
+
+  const handleRejectOpname = (opname: StockOpname) => {
+    setStockOpnames((prev) =>
+      prev.map((o) =>
+        o.id === opname.id ? { ...o, status: 'rejected', approvedBy: currentUser.id, approvedAt: today() } : o,
+      ),
+    )
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'reject',
+      module: 'inventory.opname',
+      description: `Rejected Stock Opname for ${getItemName(opname.itemId)} at ${getWarehouseName(opname.warehouseId)} (diff ${opname.difference > 0 ? '+' : ''}${opname.difference} ${getItemUnit(opname.itemId)})`,
+    })
+  }
+
+  const opnameColumns = [
+    { key: 'date', header: 'Date' },
+    { key: 'item', header: 'Item', render: (o: StockOpname) => getItemName(o.itemId) },
+    { key: 'warehouse', header: 'Warehouse', render: (o: StockOpname) => getWarehouseName(o.warehouseId) },
+    { key: 'systemQty', header: 'System Qty', render: (o: StockOpname) => `${o.systemQty} ${getItemUnit(o.itemId)}` },
+    {
+      key: 'physicalQty',
+      header: 'Physical Qty',
+      render: (o: StockOpname) => `${o.physicalQty} ${getItemUnit(o.itemId)}`,
+    },
+    {
+      key: 'difference',
+      header: 'Difference',
+      render: (o: StockOpname) => (
+        <Badge variant={o.difference > 0 ? 'success' : 'danger'}>
+          {o.difference > 0 ? '+' : ''}
+          {o.difference} {getItemUnit(o.itemId)}
+        </Badge>
+      ),
+    },
+    { key: 'pic', header: 'PIC', render: (o: StockOpname) => getUserName(o.picId) },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (o: StockOpname) =>
+        hasPermission(currentUser, 'inventory.opname', 'approve') ? (
+          <div className="d-flex align-items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => handleApproveOpname(o)}>
+              Approve
+            </Button>
+            <Button variant="danger" size="sm" onClick={() => handleRejectOpname(o)}>
+              Reject
+            </Button>
+          </div>
+        ) : (
+          <span className="text-muted small">—</span>
+        ),
+    },
+  ]
+
   const columns = [
     { key: 'date', header: 'Date' },
     {
@@ -141,7 +220,7 @@ export default function ApprovalsPage() {
 
   return (
     <div>
-      <PageToolbar title="Approvals" description="Pending Stock In/Out/Transfer transactions waiting for your approval" />
+      <PageToolbar title="Approvals" description="Pending Stock In/Out/Transfer/Opname transactions waiting for your approval" />
 
       <Card>
         <Row className="g-3 mb-3">
@@ -166,6 +245,15 @@ export default function ApprovalsPage() {
         </Row>
 
         <Table columns={columns} data={filteredTransactions} emptyMessage="No transactions waiting for approval" />
+      </Card>
+
+      <div className="mt-4 mb-3">
+        <h2 className="h6 fw-bold mb-1">Stock Opname</h2>
+        <p className="text-muted small mb-0">Pending physical count adjustments waiting for your approval</p>
+      </div>
+
+      <Card>
+        <Table columns={opnameColumns} data={filteredOpnames} emptyMessage="No stock opname waiting for approval" />
       </Card>
     </div>
   )

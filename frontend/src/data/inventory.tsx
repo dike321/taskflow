@@ -199,6 +199,50 @@ export const mockStockTransactions: StockTransaction[] = [
   { id: 20, itemId: 6, type: 'in', quantity: 10, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
 ]
 
+/** Sesi pencocokan stok sistem vs stok fisik gudang (cycle count / stock opname). */
+export interface StockOpname {
+  id: number
+  itemId: number
+  warehouseId: number
+  systemQty: number
+  physicalQty: number
+  /** physicalQty - systemQty. Positif = surplus, negatif = selisih kurang. */
+  difference: number
+  date: string
+  picId: number
+  status: 'pending' | 'approved' | 'rejected'
+  approvedBy?: number
+  approvedAt?: string
+  note?: string
+}
+
+export const mockStockOpnames: StockOpname[] = [
+  {
+    id: 1,
+    itemId: 1,
+    warehouseId: 1,
+    systemQty: 70,
+    physicalQty: 65,
+    difference: -5,
+    date: '2024-03-20',
+    picId: 5,
+    status: 'pending',
+    note: 'Ditemukan 5 rim rusak kena air saat stock opname bulanan',
+  },
+  {
+    id: 2,
+    itemId: 6,
+    warehouseId: 2,
+    systemQty: 15,
+    physicalQty: 18,
+    difference: 3,
+    date: '2024-03-21',
+    picId: 4,
+    status: 'pending',
+    note: 'Selisih lebih, kemungkinan salah catat stock in sebelumnya',
+  },
+]
+
 interface InventoryDataContextValue {
   items: Item[]
   setItems: Dispatch<SetStateAction<Item[]>>
@@ -206,6 +250,8 @@ interface InventoryDataContextValue {
   setTransactions: Dispatch<SetStateAction<StockTransaction[]>>
   warehouseStock: WarehouseStock[]
   setWarehouseStock: Dispatch<SetStateAction<WarehouseStock[]>>
+  stockOpnames: StockOpname[]
+  setStockOpnames: Dispatch<SetStateAction<StockOpname[]>>
 }
 
 const InventoryDataContext = createContext<InventoryDataContextValue | undefined>(undefined)
@@ -214,10 +260,20 @@ export function InventoryDataProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Item[]>(mockItems)
   const [transactions, setTransactions] = useState<StockTransaction[]>(mockStockTransactions)
   const [warehouseStock, setWarehouseStock] = useState<WarehouseStock[]>(mockWarehouseStock)
+  const [stockOpnames, setStockOpnames] = useState<StockOpname[]>(mockStockOpnames)
 
   return (
     <InventoryDataContext.Provider
-      value={{ items, setItems, transactions, setTransactions, warehouseStock, setWarehouseStock }}
+      value={{
+        items,
+        setItems,
+        transactions,
+        setTransactions,
+        warehouseStock,
+        setWarehouseStock,
+        stockOpnames,
+        setStockOpnames,
+      }}
     >
       {children}
     </InventoryDataContext.Provider>

@@ -29,7 +29,7 @@ const labelForType = (type: StockTransactionType) => (type === 'in' ? 'Stock In'
 export default function Header() {
   const { currentUser, switchUser } = useSession()
   const role = getRoleForUser(currentUser)
-  const { items, transactions, warehouseStock } = useInventoryData()
+  const { items, transactions, warehouseStock, stockOpnames } = useInventoryData()
   const { warehouses } = useWarehouses()
   const { preferences } = useNotificationPreferences()
 
@@ -71,8 +71,24 @@ export default function Header() {
           })
       : []
 
-    return [...pendingApprovals, ...lowStock]
-  }, [items, transactions, warehouseStock, warehouses, preferences, currentUser])
+    const pendingOpnames: NotificationItem[] = preferences.approvalPendingAlert
+      ? stockOpnames
+          .filter((o) => o.status === 'pending' && hasPermission(currentUser, 'inventory.opname', 'approve'))
+          .map((o) => {
+            const item = items.find((i) => i.id === o.itemId)
+            return {
+              id: `pending-opname-${o.id}`,
+              icon: ClipboardCheck,
+              variant: 'warning' as const,
+              title: `Stock Opname pending: ${item?.name ?? 'Unknown'}`,
+              description: `${o.difference > 0 ? '+' : ''}${o.difference} ${item?.unit ?? ''} · ${getWarehouseName(o.warehouseId)}`,
+              to: '/approvals',
+            }
+          })
+      : []
+
+    return [...pendingApprovals, ...pendingOpnames, ...lowStock]
+  }, [items, transactions, stockOpnames, warehouseStock, warehouses, preferences, currentUser])
 
   return (
     <header
