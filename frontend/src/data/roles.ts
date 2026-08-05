@@ -27,6 +27,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'warehouses', label: 'Warehouses', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'settings', label: 'Settings', actions: ['view', 'edit'] },
   { key: 'activityLog', label: 'Activity Log', actions: ['view'] },
+  { key: 'reports', label: 'Reports', actions: ['view', 'export'] },
 ]
 
 export const ALL_ACTIONS: PermissionAction[] = ['view', 'create', 'edit', 'delete', 'approve', 'export']
@@ -50,6 +51,7 @@ export const mockRoles: Role[] = [
       warehouses: ['view', 'create', 'edit', 'delete'],
       settings: ['view', 'edit'],
       activityLog: ['view'],
+      reports: ['view', 'export'],
     },
   },
   {
@@ -82,6 +84,7 @@ export const mockRoles: Role[] = [
       'inventory.opname': ['view', 'create', 'approve'],
       suppliers: ['view', 'create', 'edit'],
       warehouses: ['view', 'create', 'edit'],
+      reports: ['view', 'export'],
     },
   },
 ]

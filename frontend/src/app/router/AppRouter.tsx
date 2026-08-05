@@ -19,6 +19,7 @@ import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
 import ApprovalsPage from '../../pages/ApprovalsPage'
 import ActivityLogPage from '../../pages/ActivityLogPage'
+import ReportsPage from '../../pages/ReportsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
 import RolesPage from '../../pages/settings/RolesPage'
 import ItemsPage from '../../pages/settings/ItemsPage'
@@ -67,6 +68,7 @@ function AppRouter() {
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="warehouses" element={<WarehousesPage />} />
           <Route path="activity-log" element={<ActivityLogPage />} />
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<Navigate to="roles" replace />} />
             <Route path="roles" element={<RolesPage />} />

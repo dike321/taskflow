@@ -39,3 +39,17 @@ body {
     'Segoe UI',
     sans-serif;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .app-content {
+    margin-left: 0 !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+  }
+}

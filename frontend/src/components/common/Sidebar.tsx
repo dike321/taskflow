@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
-import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, Settings, ChevronDown, LogOut } from './Icons'
+import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, TrendingUp, Settings, ChevronDown, LogOut } from './Icons'
 import { useSession } from '../../data/session'
 import { hasModuleAccess, hasPermission } from '../../utils/permissions'
 
@@ -34,6 +34,7 @@ const menuItems: MenuItem[] = [
   { path: '/warehouses', icon: Warehouse, label: 'Warehouses', modules: ['warehouses'] },
   { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
   { path: '/activity-log', icon: History, label: 'Activity Log', modules: ['activityLog'] },
+  { path: '/reports', icon: TrendingUp, label: 'Reports', modules: ['reports'] },
   {
     path: '/settings',
     icon: Settings,
