@@ -148,37 +148,6 @@ export default function StockTransferPage() {
     setIsModalOpen(false)
   }
 
-  const handleApprove = (transaction: StockTransaction) => {
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transaction.id ? { ...t, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : t,
-      ),
-    )
-    moveStock(transaction.itemId, transaction.fromWarehouseId!, transaction.toWarehouseId!, transaction.quantity)
-    logActivity({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      action: 'approve',
-      module: 'inventory.transfer',
-      description: `Approved Transfer for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) from ${getWarehouseName(transaction.fromWarehouseId)} to ${getWarehouseName(transaction.toWarehouseId)}`,
-    })
-  }
-
-  const handleReject = (transaction: StockTransaction) => {
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transaction.id ? { ...t, status: 'rejected', approvedBy: currentUser.id, approvedAt: today() } : t,
-      ),
-    )
-    logActivity({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      action: 'reject',
-      module: 'inventory.transfer',
-      description: `Rejected Transfer for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) from ${getWarehouseName(transaction.fromWarehouseId)} to ${getWarehouseName(transaction.toWarehouseId)}`,
-    })
-  }
-
   const columns = [
     { key: 'date', header: 'Date' },
     { key: 'item', header: 'Item', render: (t: StockTransaction) => getItemName(t.itemId) },
@@ -201,23 +170,6 @@ export default function StockTransferPage() {
       key: 'status',
       header: 'Status',
       render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{t.status}</Badge>,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (t: StockTransaction) =>
-        canApprove && t.status === 'pending' ? (
-          <div className="d-flex align-items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => handleApprove(t)}>
-              Approve
-            </Button>
-            <Button variant="danger" size="sm" onClick={() => handleReject(t)}>
-              Reject
-            </Button>
-          </div>
-        ) : (
-          <span className="text-muted small">—</span>
-        ),
     },
   ]
 

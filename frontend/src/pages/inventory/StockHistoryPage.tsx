@@ -7,7 +7,7 @@ import Select from '../../components/ui/Select'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
-import { Download } from '../../components/common/Icons'
+import { Download, Paperclip } from '../../components/common/Icons'
 import type { StockTransaction, StockTransactionType } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
@@ -68,7 +68,7 @@ export default function StockHistoryPage() {
     t.type === 'transfer' ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}` : getWarehouseName(t.warehouseId)
 
   const handleExport = () => {
-    const header = ['Date', 'Type', 'Item', 'Quantity', 'Unit', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note']
+    const header = ['Date', 'Type', 'Item', 'Quantity', 'Unit', 'Warehouse', 'PIC', 'Reference', 'Status', 'Note', 'Documents']
     const rows = filteredTransactions.map((t) => [
       t.date,
       t.type.toUpperCase(),
@@ -80,6 +80,7 @@ export default function StockHistoryPage() {
       t.reference ?? '',
       t.status,
       t.note ?? '',
+      t.attachments?.map((a) => a.name).join('; ') ?? '',
     ])
 
     const csv = [header, ...rows]
@@ -111,6 +112,29 @@ export default function StockHistoryPage() {
     { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => warehouseLabel(t) },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
+    {
+      key: 'attachments',
+      header: 'Documents',
+      render: (t: StockTransaction) =>
+        t.attachments && t.attachments.length > 0 ? (
+          <div className="d-flex flex-column gap-1">
+            {t.attachments.map((a) => (
+              <a
+                key={a.id}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="small d-flex align-items-center gap-1"
+              >
+                <Paperclip size={14} />
+                {a.name}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <span className="text-muted small">—</span>
+        ),
+    },
     {
       key: 'status',
       header: 'Status',

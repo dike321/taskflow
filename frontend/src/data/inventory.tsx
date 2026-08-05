@@ -74,6 +74,13 @@ export function adjustWarehouseStock(
 
 export type StockTransactionType = 'in' | 'out' | 'transfer'
 
+export interface Attachment {
+  id: number
+  name: string
+  size: number
+  url: string
+}
+
 export interface StockTransaction {
   id: number
   itemId: number
@@ -92,6 +99,8 @@ export interface StockTransaction {
   /** Khusus type 'transfer' */
   fromWarehouseId?: number
   toWarehouseId?: number
+  /** Scan/upload dokumen resmi: PO, Surat Jalan, Invoice, BAST, dst */
+  attachments?: Attachment[]
 }
 
 export const mockStockTransactions: StockTransaction[] = [
@@ -147,6 +156,47 @@ export const mockStockTransactions: StockTransaction[] = [
     reference: 'Finance Department',
     warehouseId: 1,
   },
+  {
+    id: 5,
+    itemId: 2,
+    type: 'transfer',
+    quantity: 20,
+    date: '2024-03-08',
+    picId: 2,
+    status: 'approved',
+    approvedBy: 2,
+    approvedAt: '2024-03-08',
+    note: 'Restock cabang Surabaya',
+    fromWarehouseId: 1,
+    toWarehouseId: 2,
+  },
+  {
+    id: 6,
+    itemId: 6,
+    type: 'transfer',
+    quantity: 5,
+    date: '2024-03-14',
+    picId: 4,
+    status: 'pending',
+    fromWarehouseId: 1,
+    toWarehouseId: 3,
+  },
+  // Opening stock (saldo awal migrasi sistem) — melengkapi riwayat transaksi di atas
+  // supaya setiap angka di `mockWarehouseStock` bisa ditelusuri dari sini.
+  { id: 7, itemId: 1, type: 'in', quantity: 30, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 8, itemId: 1, type: 'in', quantity: 20, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
+  { id: 9, itemId: 2, type: 'in', quantity: 170, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 1 },
+  { id: 10, itemId: 2, type: 'in', quantity: 80, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 11, itemId: 2, type: 'in', quantity: 50, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
+  { id: 12, itemId: 3, type: 'in', quantity: 2, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 13, itemId: 3, type: 'in', quantity: 1, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
+  { id: 14, itemId: 4, type: 'in', quantity: 4, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 1 },
+  { id: 15, itemId: 4, type: 'in', quantity: 1, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 16, itemId: 5, type: 'in', quantity: 10, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 1 },
+  { id: 17, itemId: 5, type: 'in', quantity: 5, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 18, itemId: 6, type: 'in', quantity: 20, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 1 },
+  { id: 19, itemId: 6, type: 'in', quantity: 15, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
+  { id: 20, itemId: 6, type: 'in', quantity: 10, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
 ]
 
 interface InventoryDataContextValue {

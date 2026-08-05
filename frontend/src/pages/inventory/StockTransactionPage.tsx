@@ -9,9 +9,9 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
-import { Plus } from '../../components/common/Icons'
+import { Plus, Paperclip } from '../../components/common/Icons'
 import { adjustWarehouseStock, getStockQuantity } from '../../data/inventory'
-import type { StockTransaction } from '../../data/inventory'
+import type { Attachment, StockTransaction } from '../../data/inventory'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
@@ -19,7 +19,7 @@ import { useSuppliers } from '../../data/suppliers'
 import { useApprovalSettings } from '../../data/settings'
 import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
-import { parseIntInput } from '../../utils/number'
+import { parseIntInput, formatFileSize } from '../../utils/number'
 import type { InventoryContext } from './InventoryLayout'
 
 interface StockTransactionPageProps {
@@ -66,6 +66,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const [formData, setFormData] = useState(buildEmptyFormData)
   const [formError, setFormError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
 
   const [itemFilter, setItemFilter] = useState('all')
   const [warehouseFilter, setWarehouseFilter] = useState('all')
@@ -96,6 +97,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const handleAdd = () => {
     setFormData(buildEmptyFormData())
     setFormError('')
+    setFiles([])
     setIsModalOpen(true)
   }
 
@@ -122,6 +124,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     const withinThreshold = formData.quantity <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
 
+    const attachments: Attachment[] = files.map((file, index) => ({
+      id: index + 1,
+      name: file.name,
+      size: file.size,
+      url: URL.createObjectURL(file),
+    }))
+
     const newTransaction: StockTransaction = {
       id: Math.max(...transactions.map((t) => t.id), 0) + 1,
       itemId: formData.itemId,
@@ -136,6 +145,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       supplierId: type === 'in' && formData.supplierId ? formData.supplierId : undefined,
       note: formData.note || undefined,
       warehouseId: formData.warehouseId,
+      attachments: attachments.length > 0 ? attachments : undefined,
     }
 
     setTransactions([...transactions, newTransaction])
@@ -155,37 +165,6 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     setIsModalOpen(false)
   }
 
-  const handleApprove = (transaction: StockTransaction) => {
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transaction.id ? { ...t, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : t,
-      ),
-    )
-    adjustStock(transaction.itemId, transaction.warehouseId!, transaction.quantity)
-    logActivity({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      action: 'approve',
-      module: moduleKey,
-      description: `Approved ${label} for ${getItemName(transaction.itemId)} (${type === 'in' ? '+' : '-'}${transaction.quantity} ${getItemUnit(transaction.itemId)}) at ${getWarehouseName(transaction.warehouseId)}`,
-    })
-  }
-
-  const handleReject = (transaction: StockTransaction) => {
-    setTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transaction.id ? { ...t, status: 'rejected', approvedBy: currentUser.id, approvedAt: today() } : t,
-      ),
-    )
-    logActivity({
-      userId: currentUser.id,
-      userName: currentUser.name,
-      action: 'reject',
-      module: moduleKey,
-      description: `Rejected ${label} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) at ${getWarehouseName(transaction.warehouseId)}`,
-    })
-  }
-
   const columns = [
     { key: 'date', header: 'Date' },
     { key: 'item', header: 'Item', render: (t: StockTransaction) => getItemName(t.itemId) },
@@ -201,26 +180,32 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       : []),
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
-      key: 'status',
-      header: 'Status',
-      render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{t.status}</Badge>,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
+      key: 'attachments',
+      header: 'Documents',
       render: (t: StockTransaction) =>
-        canApprove && t.status === 'pending' ? (
-          <div className="d-flex align-items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => handleApprove(t)}>
-              Approve
-            </Button>
-            <Button variant="danger" size="sm" onClick={() => handleReject(t)}>
-              Reject
-            </Button>
+        t.attachments && t.attachments.length > 0 ? (
+          <div className="d-flex flex-column gap-1">
+            {t.attachments.map((a) => (
+              <a
+                key={a.id}
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="small d-flex align-items-center gap-1"
+              >
+                <Paperclip size={14} />
+                {a.name}
+              </a>
+            ))}
           </div>
         ) : (
           <span className="text-muted small">—</span>
         ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{t.status}</Badge>,
     },
   ]
 
@@ -358,6 +343,22 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             onChange={(e) => setFormData({ ...formData, note: e.target.value })}
             placeholder="Optional note"
           />
+          <Input
+            label={type === 'in' ? 'Documents (PO / Invoice / BAST scan)' : 'Documents (Surat Jalan / BAST scan)'}
+            type="file"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+          {files.length > 0 && (
+            <ul className="list-unstyled small text-muted mb-0 d-flex flex-column gap-1">
+              {files.map((file, index) => (
+                <li key={index} className="d-flex align-items-center gap-1">
+                  <Paperclip size={14} />
+                  {file.name} ({formatFileSize(file.size)})
+                </li>
+              ))}
+            </ul>
+          )}
           {!canApprove && (
             <p className="text-muted small mb-0">
               Transaksi ini akan berstatus <strong>Pending</strong> sampai disetujui oleh Supervisor.
