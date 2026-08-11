@@ -18,12 +18,14 @@ export const mockCompanyProfile: CompanyProfile = {
 export interface NotificationPreferences {
   lowStockAlert: boolean
   approvalPendingAlert: boolean
+  expiryAlert: boolean
   emailNotifications: boolean
 }
 
 export const mockNotificationPreferences: NotificationPreferences = {
   lowStockAlert: true,
   approvalPendingAlert: true,
+  expiryAlert: true,
   emailNotifications: false,
 }
 

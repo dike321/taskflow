@@ -5,7 +5,7 @@ import PageToolbar from '../../components/common/PageToolbar'
 import { useSession } from '../../data/session'
 import { hasModuleAccess } from '../../utils/permissions'
 import { useInventoryData } from '../../data/inventory'
-import type { Item, StockOpname, StockTransaction, WarehouseStock } from '../../data/inventory'
+import type { Batch, Item, StockOpname, StockTransaction, WarehouseStock } from '../../data/inventory'
 
 export interface InventoryContext {
   items: Item[]
@@ -16,6 +16,8 @@ export interface InventoryContext {
   setWarehouseStock: Dispatch<SetStateAction<WarehouseStock[]>>
   stockOpnames: StockOpname[]
   setStockOpnames: Dispatch<SetStateAction<StockOpname[]>>
+  batches: Batch[]
+  setBatches: Dispatch<SetStateAction<Batch[]>>
 }
 
 const tabs = [
@@ -23,6 +25,7 @@ const tabs = [
   { path: 'stock-out', label: 'Stock Out', module: 'inventory.stockOut' },
   { path: 'transfer', label: 'Transfer', module: 'inventory.transfer' },
   { path: 'opname', label: 'Stock Opname', module: 'inventory.opname' },
+  { path: 'batches', label: 'Batches', module: 'inventory.batches' },
   { path: 'history', label: 'History', module: 'inventory.history' },
 ]
 
@@ -37,6 +40,8 @@ export default function InventoryLayout() {
     setWarehouseStock,
     stockOpnames,
     setStockOpnames,
+    batches,
+    setBatches,
   } = useInventoryData()
 
   const visibleTabs = tabs.filter((tab) => hasModuleAccess(currentUser, tab.module))
@@ -50,6 +55,8 @@ export default function InventoryLayout() {
     setWarehouseStock,
     stockOpnames,
     setStockOpnames,
+    batches,
+    setBatches,
   }
 
   return (

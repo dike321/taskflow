@@ -28,6 +28,7 @@ interface HistoryRow {
   picId: number
   reference: string
   department?: string
+  batchLabel?: string
   note?: string
   attachments?: Attachment[]
   status: StockTransaction['status']
@@ -82,6 +83,7 @@ export default function StockHistoryPage() {
       picId: t.picId,
       reference: t.reference ?? '-',
       department: t.department,
+      batchLabel: t.batchNumber ? `${t.batchNumber} (exp ${t.expiryDate})` : undefined,
       note: t.note,
       attachments: t.attachments,
       status: t.status,
@@ -120,7 +122,7 @@ export default function StockHistoryPage() {
   }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, departmentFilter, dateFrom, dateTo])
 
   const handleExport = () => {
-    const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Department', 'Reference', 'Status', 'Note', 'Documents']
+    const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Department', 'Batch/Expiry', 'Reference', 'Status', 'Note', 'Documents']
     const csvRows = filteredRows.map((row) => [
       row.date,
       row.type.toUpperCase(),
@@ -129,6 +131,7 @@ export default function StockHistoryPage() {
       row.warehouseLabel,
       getUserName(row.picId),
       row.department ?? '',
+      row.batchLabel ?? '',
       row.reference,
       row.status,
       row.note ?? '',
@@ -160,6 +163,7 @@ export default function StockHistoryPage() {
     { key: 'warehouse', header: 'Warehouse', render: (row: HistoryRow) => row.warehouseLabel },
     { key: 'pic', header: 'PIC', render: (row: HistoryRow) => getUserName(row.picId) },
     { key: 'department', header: 'Department', render: (row: HistoryRow) => row.department ?? '-' },
+    { key: 'batch', header: 'Batch / Expiry', render: (row: HistoryRow) => row.batchLabel ?? '-' },
     { key: 'reference', header: 'Reference', render: (row: HistoryRow) => row.reference },
     {
       key: 'attachments',

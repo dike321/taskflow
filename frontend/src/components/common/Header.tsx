@@ -8,7 +8,7 @@ import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
 import { mockUsers } from '../../data/users'
 import { getRoleForUser, hasModuleAccess, hasPermission } from '../../utils/permissions'
-import { getStockQuantity, useInventoryData } from '../../data/inventory'
+import { getBatchStatus, getStockQuantity, useInventoryData } from '../../data/inventory'
 import type { StockTransactionType } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
 import { useNotificationPreferences } from '../../data/settings'
@@ -29,7 +29,7 @@ const labelForType = (type: StockTransactionType) => (type === 'in' ? 'Stock In'
 export default function Header() {
   const { currentUser, switchUser } = useSession()
   const role = getRoleForUser(currentUser)
-  const { items, transactions, warehouseStock, stockOpnames } = useInventoryData()
+  const { items, transactions, warehouseStock, stockOpnames, batches } = useInventoryData()
   const { warehouses } = useWarehouses()
   const { preferences } = useNotificationPreferences()
 
@@ -87,8 +87,27 @@ export default function Header() {
           })
       : []
 
-    return [...pendingApprovals, ...pendingOpnames, ...lowStock]
-  }, [items, transactions, stockOpnames, warehouseStock, warehouses, preferences, currentUser])
+    const expiryAlerts: NotificationItem[] =
+      preferences.expiryAlert && hasModuleAccess(currentUser, 'inventory.batches')
+        ? batches
+            .filter((b) => b.quantity > 0)
+            .map((b) => ({ batch: b, status: getBatchStatus(b.expiryDate) }))
+            .filter(({ status }) => status === 'expired' || status === 'expiring')
+            .map(({ batch, status }) => {
+              const item = items.find((i) => i.id === batch.itemId)
+              return {
+                id: `expiry-${batch.id}`,
+                icon: AlertTriangle,
+                variant: status === 'expired' ? ('danger' as const) : ('warning' as const),
+                title: `${status === 'expired' ? 'Expired' : 'Expiring soon'}: ${item?.name ?? 'Unknown'} (${batch.batchNumber})`,
+                description: `${batch.quantity} ${item?.unit ?? ''} · ${getWarehouseName(batch.warehouseId)} · exp ${batch.expiryDate}`,
+                to: '/inventory/batches',
+              }
+            })
+        : []
+
+    return [...pendingApprovals, ...pendingOpnames, ...expiryAlerts, ...lowStock]
+  }, [items, transactions, stockOpnames, batches, warehouseStock, warehouses, preferences, currentUser])
 
   return (
     <header

@@ -10,8 +10,8 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Plus, Paperclip } from '../../components/common/Icons'
-import { adjustWarehouseStock, getStockQuantity } from '../../data/inventory'
-import type { Attachment, StockTransaction } from '../../data/inventory'
+import { adjustWarehouseStock, consumeFefo, getStockQuantity, isBatchTracked } from '../../data/inventory'
+import type { Attachment, Batch, StockTransaction } from '../../data/inventory'
 import { mockUsers, DEPARTMENTS } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
@@ -35,7 +35,7 @@ const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 
 }
 
 export default function StockTransactionPage({ type }: StockTransactionPageProps) {
-  const { items, transactions, setTransactions, warehouseStock, setWarehouseStock } =
+  const { items, transactions, setTransactions, warehouseStock, setWarehouseStock, batches, setBatches } =
     useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
@@ -62,6 +62,8 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     supplierId: 0,
     department: currentUser.department,
     note: '',
+    batchNumber: '',
+    expiryDate: '',
   })
 
   const [formData, setFormData] = useState(buildEmptyFormData)
@@ -95,6 +97,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     setWarehouseStock((prev) => adjustWarehouseStock(prev, itemId, warehouseId, type === 'in' ? quantity : -quantity))
   }
 
+  const selectedItem = items.find((item) => item.id === formData.itemId)
+  const isBatchItem = selectedItem ? isBatchTracked(selectedItem) : false
+
+  const availableBatches = batches
+    .filter((b) => b.itemId === formData.itemId && b.warehouseId === formData.warehouseId && b.quantity > 0)
+    .sort((a, b) => (a.expiryDate < b.expiryDate ? -1 : 1))
+
   const handleAdd = () => {
     setFormData(buildEmptyFormData())
     setFormError('')
@@ -115,10 +124,14 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       return
     }
 
-    const selectedItem = items.find((item) => item.id === formData.itemId)
     const availableAtWarehouse = getStockQuantity(warehouseStock, formData.itemId, formData.warehouseId)
     if (type === 'out' && selectedItem && formData.quantity > availableAtWarehouse) {
       setFormError(`Quantity exceeds available stock at this warehouse (${availableAtWarehouse} ${selectedItem.unit})`)
+      return
+    }
+
+    if (type === 'in' && isBatchItem && (!formData.batchNumber.trim() || !formData.expiryDate)) {
+      setFormError('Batch/lot number and expiry date are required for this item')
       return
     }
 
@@ -145,6 +158,8 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       reference: formData.reference || undefined,
       supplierId: type === 'in' && formData.supplierId ? formData.supplierId : undefined,
       department: type === 'out' ? formData.department : undefined,
+      batchNumber: type === 'in' && isBatchItem ? formData.batchNumber.trim() : undefined,
+      expiryDate: type === 'in' && isBatchItem ? formData.expiryDate : undefined,
       note: formData.note || undefined,
       warehouseId: formData.warehouseId,
       attachments: attachments.length > 0 ? attachments : undefined,
@@ -154,6 +169,23 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
 
     if (approvedNow) {
       adjustStock(newTransaction.itemId, newTransaction.warehouseId!, newTransaction.quantity)
+
+      if (type === 'in' && newTransaction.batchNumber && newTransaction.expiryDate) {
+        const newBatch: Batch = {
+          id: Math.max(...batches.map((b) => b.id), 0) + 1,
+          itemId: newTransaction.itemId,
+          warehouseId: newTransaction.warehouseId!,
+          batchNumber: newTransaction.batchNumber,
+          expiryDate: newTransaction.expiryDate,
+          quantity: newTransaction.quantity,
+          receivedDate: newTransaction.date,
+        }
+        setBatches([...batches, newBatch])
+      }
+
+      if (type === 'out' && isBatchItem) {
+        setBatches((prev) => consumeFefo(prev, newTransaction.itemId, newTransaction.warehouseId!, newTransaction.quantity))
+      }
     }
 
     logActivity({
@@ -161,7 +193,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       userName: currentUser.name,
       action: 'create',
       module: moduleKey,
-      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.department ? `, dept ${newTransaction.department}` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.department ? `, dept ${newTransaction.department}` : ''}${newTransaction.batchNumber ? `, batch ${newTransaction.batchNumber} (exp ${newTransaction.expiryDate})` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
     })
 
     setIsModalOpen(false)
@@ -178,7 +210,15 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => getWarehouseName(t.warehouseId) },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
     ...(type === 'in'
-      ? [{ key: 'supplier', header: 'Supplier', render: (t: StockTransaction) => getSupplierName(t.supplierId) }]
+      ? [
+          { key: 'supplier', header: 'Supplier', render: (t: StockTransaction) => getSupplierName(t.supplierId) },
+          {
+            key: 'batch',
+            header: 'Batch / Expiry',
+            render: (t: StockTransaction) =>
+              t.batchNumber ? `${t.batchNumber} (exp ${t.expiryDate})` : <span className="text-muted small">—</span>,
+          },
+        ]
       : [{ key: 'department', header: 'Department', render: (t: StockTransaction) => t.department ?? '-' }]),
     { key: 'reference', header: 'Reference', render: (t: StockTransaction) => t.reference ?? '-' },
     {
@@ -349,6 +389,49 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
                 </option>
               ))}
             </Select>
+          )}
+          {type === 'in' && isBatchItem && (
+            <>
+              <Input
+                label="Batch / Lot Number"
+                value={formData.batchNumber}
+                onChange={(e) => {
+                  setFormData({ ...formData, batchNumber: e.target.value })
+                  if (formError) setFormError('')
+                }}
+                placeholder="HS-2026-E"
+                required
+              />
+              <Input
+                label="Expiry Date"
+                type="date"
+                value={formData.expiryDate}
+                onChange={(e) => {
+                  setFormData({ ...formData, expiryDate: e.target.value })
+                  if (formError) setFormError('')
+                }}
+                required
+              />
+            </>
+          )}
+          {type === 'out' && isBatchItem && (
+            <div className="border rounded-3 p-3 bg-light">
+              <p className="small fw-medium mb-2">Available batches (FEFO order)</p>
+              {availableBatches.length === 0 ? (
+                <p className="small text-muted mb-0">No batches with stock at this warehouse</p>
+              ) : (
+                <ul className="list-unstyled small mb-0 d-flex flex-column gap-1">
+                  {availableBatches.map((batch) => (
+                    <li key={batch.id}>
+                      {batch.batchNumber} (exp {batch.expiryDate}): {batch.quantity} {selectedItem?.unit}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="small text-muted mb-0 mt-2">
+                Stok akan diambil otomatis dari batch dengan expiry paling dekat lebih dulu saat disetujui.
+              </p>
+            </div>
           )}
           <Input
             label={type === 'in' ? 'Reference (PO Number)' : 'Reference (Purpose)'}

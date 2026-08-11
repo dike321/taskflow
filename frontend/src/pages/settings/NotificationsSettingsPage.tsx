@@ -18,6 +18,11 @@ const toggles: { key: keyof NotificationPreferences; label: string; description:
     description: 'Notify approvers when a Stock In/Out transaction needs approval',
   },
   {
+    key: 'expiryAlert',
+    label: 'Expiry alert',
+    description: 'Notify when a batch/lot is expired or expiring within 30 days',
+  },
+  {
     key: 'emailNotifications',
     label: 'Email notifications',
     description: 'Also send the above alerts by email, in addition to in-app notifications',

@@ -6,8 +6,8 @@ import Table from '../components/ui/Table'
 import Select from '../components/ui/Select'
 import Badge from '../components/ui/Badge'
 import PageToolbar from '../components/common/PageToolbar'
-import { useInventoryData, adjustWarehouseStock } from '../data/inventory'
-import type { StockOpname, StockTransaction, StockTransactionType } from '../data/inventory'
+import { useInventoryData, adjustWarehouseStock, consumeFefo, isBatchTracked } from '../data/inventory'
+import type { Batch, StockOpname, StockTransaction, StockTransactionType } from '../data/inventory'
 import { mockUsers } from '../data/users'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
@@ -24,7 +24,8 @@ const typeVariant: Record<StockTransactionType, 'success' | 'danger' | 'info'> =
 }
 
 export default function ApprovalsPage() {
-  const { items, transactions, setTransactions, stockOpnames, setStockOpnames, setWarehouseStock } = useInventoryData()
+  const { items, transactions, setTransactions, stockOpnames, setStockOpnames, setWarehouseStock, batches, setBatches } =
+    useInventoryData()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
   const { suppliers } = useSuppliers()
@@ -69,6 +70,28 @@ export default function ApprovalsPage() {
     })
   }
 
+  const applyBatchChange = (transaction: StockTransaction) => {
+    const item = items.find((i) => i.id === transaction.itemId)
+    if (!item || !isBatchTracked(item)) return
+
+    if (transaction.type === 'in' && transaction.batchNumber && transaction.expiryDate) {
+      const newBatch: Batch = {
+        id: Math.max(...batches.map((b) => b.id), 0) + 1,
+        itemId: transaction.itemId,
+        warehouseId: transaction.warehouseId!,
+        batchNumber: transaction.batchNumber,
+        expiryDate: transaction.expiryDate,
+        quantity: transaction.quantity,
+        receivedDate: transaction.date,
+      }
+      setBatches((prev) => [...prev, newBatch])
+    }
+
+    if (transaction.type === 'out') {
+      setBatches((prev) => consumeFefo(prev, transaction.itemId, transaction.warehouseId!, transaction.quantity))
+    }
+  }
+
   const handleApprove = (transaction: StockTransaction) => {
     setTransactions((prev) =>
       prev.map((t) =>
@@ -76,6 +99,7 @@ export default function ApprovalsPage() {
       ),
     )
     applyStockChange(transaction)
+    applyBatchChange(transaction)
     logActivity({
       userId: currentUser.id,
       userName: currentUser.name,

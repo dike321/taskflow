@@ -96,6 +96,9 @@ export interface StockTransaction {
   note?: string
   /** Cost center: departemen pemakai barang keluar. Khusus type 'out'. */
   department?: string
+  /** Batch/lot & expiry untuk barang consumable. Khusus type 'in'. */
+  batchNumber?: string
+  expiryDate?: string
   /** Gudang tujuan (in) / gudang asal (out). Tidak dipakai untuk transfer. */
   warehouseId?: number
   /** Khusus type 'transfer' */
@@ -247,6 +250,66 @@ export const mockStockOpnames: StockOpname[] = [
   },
 ]
 
+/** Barang consumable/perishable dilacak per batch/lot + tanggal kadaluarsa (FEFO). */
+export function isBatchTracked(item: Pick<Item, 'category'>): boolean {
+  return item.category === 'Consumable'
+}
+
+export interface Batch {
+  id: number
+  itemId: number
+  warehouseId: number
+  batchNumber: string
+  expiryDate: string
+  /** Sisa quantity di batch ini (berkurang saat stock out FEFO). */
+  quantity: number
+  receivedDate: string
+}
+
+export type BatchStatus = 'expired' | 'expiring' | 'ok'
+
+const EXPIRING_SOON_DAYS = 30
+
+/** Status kadaluarsa relatif ke `referenceDate` (default: hari ini). */
+export function getBatchStatus(expiryDate: string, referenceDate: Date = new Date()): BatchStatus {
+  const daysLeft = (new Date(expiryDate).getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysLeft < 0) return 'expired'
+  if (daysLeft <= EXPIRING_SOON_DAYS) return 'expiring'
+  return 'ok'
+}
+
+/**
+ * Kurangi stok item/gudang tertentu dari batch dengan expiry paling dekat lebih dulu (FEFO).
+ * Tidak memvalidasi kecukupan stok — pemanggil harus memastikan quantity tersedia sebelumnya.
+ */
+export function consumeFefo(batches: Batch[], itemId: number, warehouseId: number, quantity: number): Batch[] {
+  let remaining = quantity
+  const order = batches
+    .filter((b) => b.itemId === itemId && b.warehouseId === warehouseId && b.quantity > 0)
+    .sort((a, b) => (a.expiryDate < b.expiryDate ? -1 : 1))
+    .map((b) => b.id)
+
+  const consumption = new Map<number, number>()
+  for (const batchId of order) {
+    if (remaining <= 0) break
+    const batch = batches.find((b) => b.id === batchId)!
+    const take = Math.min(batch.quantity, remaining)
+    consumption.set(batchId, take)
+    remaining -= take
+  }
+
+  return batches.map((b) => (consumption.has(b.id) ? { ...b, quantity: b.quantity - consumption.get(b.id)! } : b))
+}
+
+export const mockBatches: Batch[] = [
+  { id: 1, itemId: 5, warehouseId: 1, batchNumber: 'TP-2026-A', expiryDate: '2026-08-20', quantity: 10, receivedDate: '2024-01-05' },
+  { id: 2, itemId: 5, warehouseId: 2, batchNumber: 'TP-2027-B', expiryDate: '2027-01-15', quantity: 5, receivedDate: '2024-01-05' },
+  { id: 3, itemId: 6, warehouseId: 1, batchNumber: 'HS-2026-A', expiryDate: '2026-08-10', quantity: 12, receivedDate: '2024-01-05' },
+  { id: 4, itemId: 6, warehouseId: 1, batchNumber: 'HS-2026-B', expiryDate: '2026-12-01', quantity: 8, receivedDate: '2024-01-05' },
+  { id: 5, itemId: 6, warehouseId: 2, batchNumber: 'HS-2025-C', expiryDate: '2025-11-01', quantity: 15, receivedDate: '2024-01-05' },
+  { id: 6, itemId: 6, warehouseId: 3, batchNumber: 'HS-2027-D', expiryDate: '2027-03-01', quantity: 10, receivedDate: '2024-01-05' },
+]
+
 interface InventoryDataContextValue {
   items: Item[]
   setItems: Dispatch<SetStateAction<Item[]>>
@@ -256,6 +319,8 @@ interface InventoryDataContextValue {
   setWarehouseStock: Dispatch<SetStateAction<WarehouseStock[]>>
   stockOpnames: StockOpname[]
   setStockOpnames: Dispatch<SetStateAction<StockOpname[]>>
+  batches: Batch[]
+  setBatches: Dispatch<SetStateAction<Batch[]>>
 }
 
 const InventoryDataContext = createContext<InventoryDataContextValue | undefined>(undefined)
@@ -265,6 +330,7 @@ export function InventoryDataProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<StockTransaction[]>(mockStockTransactions)
   const [warehouseStock, setWarehouseStock] = useState<WarehouseStock[]>(mockWarehouseStock)
   const [stockOpnames, setStockOpnames] = useState<StockOpname[]>(mockStockOpnames)
+  const [batches, setBatches] = useState<Batch[]>(mockBatches)
 
   return (
     <InventoryDataContext.Provider
@@ -277,6 +343,8 @@ export function InventoryDataProvider({ children }: { children: ReactNode }) {
         setWarehouseStock,
         stockOpnames,
         setStockOpnames,
+        batches,
+        setBatches,
       }}
     >
       {children}
