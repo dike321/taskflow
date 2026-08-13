@@ -6,21 +6,40 @@ export interface Item {
   sku: string
   name: string
   category: string
+  /** Unit dasar — stok selalu dilacak & ditampilkan dalam unit ini. */
   unit: string
   minStock: number
+  /** Unit pembelian dari supplier (mis. "box"), kalau beda dari unit dasar (mis. "pcs"). */
+  purchaseUnit?: string
+  /** 1 purchaseUnit = sekian unit dasar. Mis. 1 box = 12 pcs. */
+  purchaseConversionFactor?: number
+  /** Kode barcode/QR untuk scan cepat saat Stock In/Out (scanner USB = keyboard input + Enter). */
+  barcode?: string
 }
 
 export const CATEGORIES = ['ATK', 'Elektronik', 'Consumable']
-export const UNITS = ['pcs', 'unit', 'box', 'rim', 'botol', 'kg']
+export const UNITS = ['pcs', 'unit', 'box', 'karton', 'rim', 'botol', 'kg']
 
 export const mockItems: Item[] = [
-  { id: 1, sku: 'ATK-001', name: 'Kertas A4 80gsm', category: 'ATK', unit: 'rim', minStock: 50 },
-  { id: 2, sku: 'ATK-002', name: 'Pulpen Hitam', category: 'ATK', unit: 'pcs', minStock: 100 },
-  { id: 3, sku: 'ELK-001', name: 'Laptop Dell Latitude', category: 'Elektronik', unit: 'unit', minStock: 5 },
-  { id: 4, sku: 'ELK-002', name: 'Monitor LED 24"', category: 'Elektronik', unit: 'unit', minStock: 5 },
-  { id: 5, sku: 'CON-001', name: 'Tinta Printer Hitam', category: 'Consumable', unit: 'botol', minStock: 20 },
-  { id: 6, sku: 'CON-002', name: 'Hand Sanitizer 500ml', category: 'Consumable', unit: 'botol', minStock: 30 },
+  { id: 1, sku: 'ATK-001', name: 'Kertas A4 80gsm', category: 'ATK', unit: 'rim', minStock: 50, purchaseUnit: 'karton', purchaseConversionFactor: 5, barcode: '8991000000013' },
+  { id: 2, sku: 'ATK-002', name: 'Pulpen Hitam', category: 'ATK', unit: 'pcs', minStock: 100, purchaseUnit: 'box', purchaseConversionFactor: 12, barcode: '8991000000020' },
+  { id: 3, sku: 'ELK-001', name: 'Laptop Dell Latitude', category: 'Elektronik', unit: 'unit', minStock: 5, barcode: '8991000000037' },
+  { id: 4, sku: 'ELK-002', name: 'Monitor LED 24"', category: 'Elektronik', unit: 'unit', minStock: 5, barcode: '8991000000044' },
+  { id: 5, sku: 'CON-001', name: 'Tinta Printer Hitam', category: 'Consumable', unit: 'botol', minStock: 20, purchaseUnit: 'box', purchaseConversionFactor: 6, barcode: '8991000000051' },
+  { id: 6, sku: 'CON-002', name: 'Hand Sanitizer 500ml', category: 'Consumable', unit: 'botol', minStock: 30, purchaseUnit: 'box', purchaseConversionFactor: 12, barcode: '8991000000068' },
 ]
+
+/** Item punya konversi satuan pembelian (mis. beli per box, stok dilacak per pcs)? */
+export function hasUnitConversion(item: Pick<Item, 'purchaseUnit' | 'purchaseConversionFactor'>): boolean {
+  return !!item.purchaseUnit && !!item.purchaseConversionFactor && item.purchaseConversionFactor > 1
+}
+
+/** Cari item berdasarkan kode barcode/QR hasil scan (exact match, trimmed). */
+export function findItemByBarcode(items: Item[], code: string): Item | undefined {
+  const trimmed = code.trim()
+  if (!trimmed) return undefined
+  return items.find((item) => item.barcode === trimmed)
+}
 
 export interface WarehouseStock {
   itemId: number
@@ -32,7 +51,7 @@ export const mockWarehouseStock: WarehouseStock[] = [
   { itemId: 1, warehouseId: 1, quantity: 70 },
   { itemId: 1, warehouseId: 2, quantity: 30 },
   { itemId: 1, warehouseId: 3, quantity: 20 },
-  { itemId: 2, warehouseId: 1, quantity: 150 },
+  { itemId: 2, warehouseId: 1, quantity: 174 },
   { itemId: 2, warehouseId: 2, quantity: 100 },
   { itemId: 2, warehouseId: 3, quantity: 50 },
   { itemId: 3, warehouseId: 1, quantity: 5 },
@@ -99,6 +118,12 @@ export interface StockTransaction {
   /** Batch/lot & expiry untuk barang consumable. Khusus type 'in'. */
   batchNumber?: string
   expiryDate?: string
+  /**
+   * Qty & unit seperti yang dientry user saat barang dibeli per unit pembelian (mis. "2 box").
+   * `quantity` di atas selalu dalam unit dasar item (hasil konversi). Khusus type 'in'.
+   */
+  purchaseQuantity?: number
+  purchaseUnit?: string
   /** Gudang tujuan (in) / gudang asal (out). Tidak dipakai untuk transfer. */
   warehouseId?: number
   /** Khusus type 'transfer' */
@@ -204,6 +229,23 @@ export const mockStockTransactions: StockTransaction[] = [
   { id: 18, itemId: 6, type: 'in', quantity: 20, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 1 },
   { id: 19, itemId: 6, type: 'in', quantity: 15, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 2 },
   { id: 20, itemId: 6, type: 'in', quantity: 10, date: '2024-01-05', picId: 4, status: 'approved', approvedBy: 2, approvedAt: '2024-01-05', reference: 'Opening Stock', warehouseId: 3 },
+  // Contoh Stock In dengan konversi satuan: dibeli per box, stok tercatat per pcs.
+  {
+    id: 21,
+    itemId: 2,
+    type: 'in',
+    quantity: 24,
+    purchaseQuantity: 2,
+    purchaseUnit: 'box',
+    date: '2024-03-15',
+    picId: 4,
+    status: 'approved',
+    approvedBy: 2,
+    approvedAt: '2024-03-15',
+    reference: 'PO-2024-010',
+    supplierId: 1,
+    warehouseId: 1,
+  },
 ]
 
 /** Sesi pencocokan stok sistem vs stok fisik gudang (cycle count / stock opname). */

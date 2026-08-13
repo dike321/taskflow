@@ -74,7 +74,9 @@ export default function StockHistoryPage() {
       date: t.date,
       type: t.type,
       itemId: t.itemId,
-      quantityLabel: `${t.quantity} ${getItemUnit(t.itemId)}`,
+      quantityLabel: t.purchaseQuantity
+        ? `${t.quantity} ${getItemUnit(t.itemId)} (${t.purchaseQuantity} ${t.purchaseUnit})`
+        : `${t.quantity} ${getItemUnit(t.itemId)}`,
       warehouseLabel:
         t.type === 'transfer'
           ? `${getWarehouseName(t.fromWarehouseId)} → ${getWarehouseName(t.toWarehouseId)}`

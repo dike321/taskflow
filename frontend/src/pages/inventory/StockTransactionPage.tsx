@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 import { Row, Col } from 'react-bootstrap'
 import { useOutletContext } from 'react-router-dom'
 import Button from '../../components/ui/Button'
@@ -9,8 +9,15 @@ import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
-import { Plus, Paperclip } from '../../components/common/Icons'
-import { adjustWarehouseStock, consumeFefo, getStockQuantity, isBatchTracked } from '../../data/inventory'
+import { Plus, Paperclip, ScanLine } from '../../components/common/Icons'
+import {
+  adjustWarehouseStock,
+  consumeFefo,
+  findItemByBarcode,
+  getStockQuantity,
+  hasUnitConversion,
+  isBatchTracked,
+} from '../../data/inventory'
 import type { Attachment, Batch, StockTransaction } from '../../data/inventory'
 import { mockUsers, DEPARTMENTS } from '../../data/users'
 import { useSession } from '../../data/session'
@@ -52,24 +59,31 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'active')
   const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'active')
 
-  const buildEmptyFormData = () => ({
-    itemId: items[0]?.id ?? 0,
-    warehouseId: activeWarehouses[0]?.id ?? 0,
-    quantity: 0,
-    date: today(),
-    picId: currentUser.id,
-    reference: '',
-    supplierId: 0,
-    department: currentUser.department,
-    note: '',
-    batchNumber: '',
-    expiryDate: '',
-  })
+  const buildEmptyFormData = () => {
+    const defaultItem = items[0]
+    return {
+      itemId: defaultItem?.id ?? 0,
+      warehouseId: activeWarehouses[0]?.id ?? 0,
+      quantity: 0,
+      unitMode: (defaultItem && hasUnitConversion(defaultItem) ? 'purchase' : 'base') as 'base' | 'purchase',
+      date: today(),
+      picId: currentUser.id,
+      reference: '',
+      supplierId: 0,
+      department: currentUser.department,
+      note: '',
+      batchNumber: '',
+      expiryDate: '',
+    }
+  }
 
   const [formData, setFormData] = useState(buildEmptyFormData)
   const [formError, setFormError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [files, setFiles] = useState<File[]>([])
+  const [barcodeInput, setBarcodeInput] = useState('')
+  const [barcodeFeedback, setBarcodeFeedback] = useState<{ type: 'success' | 'danger'; text: string } | null>(null)
+  const barcodeInputRef = useRef<HTMLInputElement>(null)
 
   const [itemFilter, setItemFilter] = useState('all')
   const [warehouseFilter, setWarehouseFilter] = useState('all')
@@ -99,17 +113,59 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
 
   const selectedItem = items.find((item) => item.id === formData.itemId)
   const isBatchItem = selectedItem ? isBatchTracked(selectedItem) : false
+  const itemHasConversion = selectedItem ? hasUnitConversion(selectedItem) : false
+  const activeUnitMode = type === 'in' && itemHasConversion ? formData.unitMode : 'base'
+  const conversionFactor = selectedItem?.purchaseConversionFactor ?? 1
+  const enteredUnitLabel = (activeUnitMode === 'purchase' ? selectedItem?.purchaseUnit : selectedItem?.unit) ?? ''
+  const baseQuantityPreview = activeUnitMode === 'purchase' ? formData.quantity * conversionFactor : formData.quantity
 
   const availableBatches = batches
     .filter((b) => b.itemId === formData.itemId && b.warehouseId === formData.warehouseId && b.quantity > 0)
     .sort((a, b) => (a.expiryDate < b.expiryDate ? -1 : 1))
 
+  const selectItem = (newItemId: number) => {
+    const newItem = items.find((item) => item.id === newItemId)
+    setFormData((prev) => ({
+      ...prev,
+      itemId: newItemId,
+      unitMode: newItem && hasUnitConversion(newItem) ? 'purchase' : 'base',
+      quantity: 0,
+    }))
+    return newItem
+  }
+
+  const handleBarcodeKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+
+    const code = barcodeInput.trim()
+    if (!code) return
+
+    const found = findItemByBarcode(items, code)
+    if (found) {
+      selectItem(found.id)
+      setBarcodeFeedback({ type: 'success', text: `Scanned: ${found.name}` })
+    } else {
+      setBarcodeFeedback({ type: 'danger', text: `Barcode "${code}" not found` })
+    }
+    setBarcodeInput('')
+  }
+
   const handleAdd = () => {
     setFormData(buildEmptyFormData())
     setFormError('')
     setFiles([])
+    setBarcodeInput('')
+    setBarcodeFeedback(null)
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (!isModalOpen) return
+    // Fokuskan field scan begitu modal terbuka, supaya scanner USB (bertindak sebagai keyboard) bisa langsung mengetik.
+    const timer = setTimeout(() => barcodeInputRef.current?.focus(), 150)
+    return () => clearTimeout(timer)
+  }, [isModalOpen])
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -130,12 +186,14 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       return
     }
 
+    const baseQuantity = type === 'in' ? baseQuantityPreview : formData.quantity
+
     if (type === 'in' && isBatchItem && (!formData.batchNumber.trim() || !formData.expiryDate)) {
       setFormError('Batch/lot number and expiry date are required for this item')
       return
     }
 
-    const withinThreshold = formData.quantity <= approvalThreshold
+    const withinThreshold = baseQuantity <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
 
     const attachments: Attachment[] = files.map((file, index) => ({
@@ -145,11 +203,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       url: URL.createObjectURL(file),
     }))
 
+    const usesPurchaseUnit = type === 'in' && itemHasConversion && formData.unitMode === 'purchase'
+
     const newTransaction: StockTransaction = {
       id: Math.max(...transactions.map((t) => t.id), 0) + 1,
       itemId: formData.itemId,
       type,
-      quantity: formData.quantity,
+      quantity: baseQuantity,
       date: formData.date,
       picId: formData.picId,
       status: approvedNow ? 'approved' : 'pending',
@@ -160,6 +220,8 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       department: type === 'out' ? formData.department : undefined,
       batchNumber: type === 'in' && isBatchItem ? formData.batchNumber.trim() : undefined,
       expiryDate: type === 'in' && isBatchItem ? formData.expiryDate : undefined,
+      purchaseQuantity: usesPurchaseUnit ? formData.quantity : undefined,
+      purchaseUnit: usesPurchaseUnit ? selectedItem!.purchaseUnit : undefined,
       note: formData.note || undefined,
       warehouseId: formData.warehouseId,
       attachments: attachments.length > 0 ? attachments : undefined,
@@ -193,7 +255,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       userName: currentUser.name,
       action: 'create',
       module: moduleKey,
-      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.department ? `, dept ${newTransaction.department}` : ''}${newTransaction.batchNumber ? `, batch ${newTransaction.batchNumber} (exp ${newTransaction.expiryDate})` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
+      description: `Created ${label} for ${getItemName(newTransaction.itemId)} (${type === 'in' ? '+' : '-'}${newTransaction.quantity} ${getItemUnit(newTransaction.itemId)}${newTransaction.purchaseQuantity ? ` = ${newTransaction.purchaseQuantity} ${newTransaction.purchaseUnit}` : ''}) at ${getWarehouseName(newTransaction.warehouseId)}${newTransaction.supplierId ? ` from ${getSupplierName(newTransaction.supplierId)}` : ''}${newTransaction.department ? `, dept ${newTransaction.department}` : ''}${newTransaction.batchNumber ? `, batch ${newTransaction.batchNumber} (exp ${newTransaction.expiryDate})` : ''}${newTransaction.reference ? `, ref ${newTransaction.reference}` : ''}`,
     })
 
     setIsModalOpen(false)
@@ -205,7 +267,10 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     {
       key: 'quantity',
       header: 'Quantity',
-      render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
+      render: (t: StockTransaction) =>
+        t.purchaseQuantity
+          ? `${t.quantity} ${getItemUnit(t.itemId)} (${t.purchaseQuantity} ${t.purchaseUnit})`
+          : `${t.quantity} ${getItemUnit(t.itemId)}`,
     },
     { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => getWarehouseName(t.warehouseId) },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
@@ -303,6 +368,23 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Add ${label}`}>
         <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
+          <Input
+            ref={barcodeInputRef}
+            label="Scan Barcode"
+            value={barcodeInput}
+            onChange={(e) => {
+              setBarcodeInput(e.target.value)
+              if (barcodeFeedback) setBarcodeFeedback(null)
+            }}
+            onKeyDown={handleBarcodeKeyDown}
+            placeholder="Arahkan scanner USB ke sini, atau pilih item manual di bawah"
+          />
+          {barcodeFeedback && (
+            <p className={`small mb-0 d-flex align-items-center gap-1 text-${barcodeFeedback.type}`}>
+              <ScanLine size={14} />
+              {barcodeFeedback.text}
+            </p>
+          )}
           <Select
             label="Warehouse"
             value={formData.warehouseId}
@@ -320,7 +402,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
           <Select
             label="Item"
             value={formData.itemId}
-            onChange={(e) => setFormData({ ...formData, itemId: Number(e.target.value) })}
+            onChange={(e) => selectItem(Number(e.target.value))}
           >
             {items.map((item) => (
               <option key={item.id} value={item.id}>
@@ -329,8 +411,18 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
               </option>
             ))}
           </Select>
+          {type === 'in' && itemHasConversion && selectedItem && (
+            <Select
+              label="Input Quantity In"
+              value={formData.unitMode}
+              onChange={(e) => setFormData({ ...formData, unitMode: e.target.value as 'base' | 'purchase', quantity: 0 })}
+            >
+              <option value="purchase">{selectedItem.purchaseUnit} (purchase unit)</option>
+              <option value="base">{selectedItem.unit} (base unit)</option>
+            </Select>
+          )}
           <Input
-            label="Quantity"
+            label={`Quantity${enteredUnitLabel ? ` (${enteredUnitLabel})` : ''}`}
             type="text"
             inputMode="numeric"
             value={formData.quantity}
@@ -341,6 +433,12 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             error={formError || undefined}
             required
           />
+          {type === 'in' && activeUnitMode === 'purchase' && formData.quantity > 0 && (
+            <p className="text-muted small mb-0">
+              = {baseQuantityPreview} {selectedItem?.unit} (1 {selectedItem?.purchaseUnit} = {conversionFactor}{' '}
+              {selectedItem?.unit})
+            </p>
+          )}
           <Input
             label="Date"
             type="date"
@@ -466,7 +564,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
               Transaksi ini akan berstatus <strong>Pending</strong> sampai disetujui oleh Supervisor.
             </p>
           )}
-          {canApprove && formData.quantity > approvalThreshold && (
+          {canApprove && baseQuantityPreview > approvalThreshold && (
             <p className="text-muted small mb-0">
               Quantity melebihi ambang batas approval ({approvalThreshold} unit), transaksi ini akan tetap berstatus{' '}
               <strong>Pending</strong> walau Anda punya izin approve.

@@ -9,7 +9,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
-import { CATEGORIES, UNITS, useInventoryData, getStockQuantity } from '../../data/inventory'
+import { CATEGORIES, UNITS, useInventoryData, getStockQuantity, hasUnitConversion, findItemByBarcode } from '../../data/inventory'
 import type { Item } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
 import { useSession } from '../../data/session'
@@ -17,7 +17,16 @@ import { useActivityLog } from '../../data/activityLog'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput } from '../../utils/number'
 
-const emptyFormData = { sku: '', name: '', category: CATEGORIES[0], unit: UNITS[0], minStock: 0 }
+const emptyFormData = {
+  sku: '',
+  name: '',
+  category: CATEGORIES[0],
+  unit: UNITS[0],
+  minStock: 0,
+  purchaseUnit: '',
+  purchaseConversionFactor: 0,
+  barcode: '',
+}
 
 export default function ItemsPage() {
   const { items, setItems, warehouseStock } = useInventoryData()
@@ -30,6 +39,7 @@ export default function ItemsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null)
   const [breakdownTarget, setBreakdownTarget] = useState<Item | null>(null)
   const [formData, setFormData] = useState(emptyFormData)
+  const [formError, setFormError] = useState('')
 
   const [skuQuery, setSkuQuery] = useState('')
   const [nameQuery, setNameQuery] = useState('')
@@ -68,13 +78,18 @@ export default function ItemsPage() {
       category: item.category,
       unit: item.unit,
       minStock: item.minStock,
+      purchaseUnit: item.purchaseUnit ?? '',
+      purchaseConversionFactor: item.purchaseConversionFactor ?? 0,
+      barcode: item.barcode ?? '',
     })
+    setFormError('')
     setIsModalOpen(true)
   }
 
   const handleAdd = () => {
     setEditingItem(null)
     setFormData(emptyFormData)
+    setFormError('')
     setIsModalOpen(true)
   }
 
@@ -99,8 +114,37 @@ export default function ItemsPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
 
+    if (formData.purchaseUnit && formData.purchaseUnit === formData.unit) {
+      setFormError('Purchase unit must be different from the base unit')
+      return
+    }
+
+    if (formData.purchaseUnit && formData.purchaseConversionFactor < 2) {
+      setFormError('Conversion factor must be at least 2')
+      return
+    }
+
+    const trimmedBarcode = formData.barcode.trim()
+    if (trimmedBarcode) {
+      const duplicate = findItemByBarcode(items, trimmedBarcode)
+      if (duplicate && duplicate.id !== editingItem?.id) {
+        setFormError(`Barcode already used by ${duplicate.sku} (${duplicate.name})`)
+        return
+      }
+    }
+
+    const { purchaseUnit, purchaseConversionFactor, ...rest } = formData
+    const conversion = purchaseUnit ? { purchaseUnit, purchaseConversionFactor } : {}
+    const itemData = {
+      ...rest,
+      purchaseUnit: undefined,
+      purchaseConversionFactor: undefined,
+      ...conversion,
+      barcode: trimmedBarcode || undefined,
+    }
+
     if (editingItem) {
-      setItems(items.map((item) => (item.id === editingItem.id ? { ...item, ...formData } : item)))
+      setItems(items.map((item) => (item.id === editingItem.id ? { ...item, ...itemData } : item)))
       logActivity({
         userId: currentUser.id,
         userName: currentUser.name,
@@ -111,7 +155,7 @@ export default function ItemsPage() {
     } else {
       const newItem: Item = {
         id: Math.max(...items.map((i) => i.id), 0) + 1,
-        ...formData,
+        ...itemData,
       }
       setItems([...items, newItem])
       logActivity({
@@ -130,6 +174,24 @@ export default function ItemsPage() {
     { key: 'sku', header: 'SKU' },
     { key: 'name', header: 'Name' },
     { key: 'category', header: 'Category' },
+    {
+      key: 'barcode',
+      header: 'Barcode',
+      render: (item: Item) =>
+        item.barcode ? <span className="small font-monospace">{item.barcode}</span> : <span className="text-muted small">—</span>,
+    },
+    {
+      key: 'conversion',
+      header: 'Purchase Conversion',
+      render: (item: Item) =>
+        hasUnitConversion(item) ? (
+          <span className="small text-muted">
+            1 {item.purchaseUnit} = {item.purchaseConversionFactor} {item.unit}
+          </span>
+        ) : (
+          <span className="text-muted small">—</span>
+        ),
+    },
     {
       key: 'stock',
       header: 'Stock (All Warehouses)',
@@ -245,6 +307,16 @@ export default function ItemsPage() {
             placeholder="Kertas A4 80gsm"
             required
           />
+          <Input
+            label="Barcode (optional)"
+            value={formData.barcode}
+            onChange={(e) => {
+              setFormData({ ...formData, barcode: e.target.value })
+              if (formError) setFormError('')
+            }}
+            error={formError.startsWith('Barcode') ? formError : undefined}
+            placeholder="8991000000013"
+          />
           <Select
             label="Category"
             value={formData.category}
@@ -256,13 +328,56 @@ export default function ItemsPage() {
               </option>
             ))}
           </Select>
-          <Select label="Unit" value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })}>
+          <Select
+            label="Unit"
+            value={formData.unit}
+            onChange={(e) => {
+              setFormData({ ...formData, unit: e.target.value })
+              if (formError) setFormError('')
+            }}
+          >
             {UNITS.map((unit) => (
               <option key={unit} value={unit}>
                 {unit}
               </option>
             ))}
           </Select>
+          <Select
+            label="Purchase Unit (optional)"
+            value={formData.purchaseUnit}
+            onChange={(e) => {
+              setFormData({ ...formData, purchaseUnit: e.target.value })
+              if (formError) setFormError('')
+            }}
+          >
+            <option value="">Same as base unit (no conversion)</option>
+            {UNITS.filter((unit) => unit !== formData.unit).map((unit) => (
+              <option key={unit} value={unit}>
+                {unit}
+              </option>
+            ))}
+          </Select>
+          {formData.purchaseUnit && (
+            <Input
+              label={`1 ${formData.purchaseUnit} = ? ${formData.unit}`}
+              type="text"
+              inputMode="numeric"
+              value={formData.purchaseConversionFactor}
+              onChange={(e) => {
+                setFormData({ ...formData, purchaseConversionFactor: parseIntInput(e.target.value) })
+                if (formError) setFormError('')
+              }}
+              error={formError && !formError.startsWith('Barcode') ? formError : undefined}
+              placeholder="12"
+              required
+            />
+          )}
+          {formData.purchaseUnit && !formError && (
+            <p className="text-muted small mb-0">
+              Barang dibeli per <strong>{formData.purchaseUnit}</strong> lewat Stock In, tapi stok tetap dilacak per{' '}
+              <strong>{formData.unit}</strong> — konversi otomatis.
+            </p>
+          )}
           <Input
             label="Minimum Stock"
             type="text"

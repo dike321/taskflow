@@ -214,7 +214,10 @@ export default function ApprovalsPage() {
     {
       key: 'quantity',
       header: 'Quantity',
-      render: (t: StockTransaction) => `${t.quantity} ${getItemUnit(t.itemId)}`,
+      render: (t: StockTransaction) =>
+        t.purchaseQuantity
+          ? `${t.quantity} ${getItemUnit(t.itemId)} (${t.purchaseQuantity} ${t.purchaseUnit})`
+          : `${t.quantity} ${getItemUnit(t.itemId)}`,
     },
     { key: 'warehouse', header: 'Warehouse', render: (t: StockTransaction) => warehouseLabel(t) },
     { key: 'pic', header: 'PIC', render: (t: StockTransaction) => getUserName(t.picId) },
