@@ -6,6 +6,7 @@ import { ActivityLogProvider } from '../../data/activityLog'
 import { InventoryDataProvider } from '../../data/inventory'
 import { SuppliersProvider } from '../../data/suppliers'
 import { WarehousesProvider } from '../../data/warehouses'
+import { TicketsProvider } from '../../data/tickets'
 import { ApprovalSettingsProvider, NotificationPreferencesProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
 import UsersPage from '../../pages/UsersPage'
@@ -19,6 +20,7 @@ import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
 import ApprovalsPage from '../../pages/ApprovalsPage'
+import TicketsPage from '../../pages/TicketsPage'
 import ActivityLogPage from '../../pages/ActivityLogPage'
 import ReportsPage from '../../pages/ReportsPage'
 import SettingsLayout from '../../pages/settings/SettingsLayout'
@@ -42,11 +44,13 @@ function AppRouter() {
                 <InventoryDataProvider>
                   <SuppliersProvider>
                     <WarehousesProvider>
-                      <ApprovalSettingsProvider>
-                        <NotificationPreferencesProvider>
-                          <MainLayout />
-                        </NotificationPreferencesProvider>
-                      </ApprovalSettingsProvider>
+                      <TicketsProvider>
+                        <ApprovalSettingsProvider>
+                          <NotificationPreferencesProvider>
+                            <MainLayout />
+                          </NotificationPreferencesProvider>
+                        </ApprovalSettingsProvider>
+                      </TicketsProvider>
                     </WarehousesProvider>
                   </SuppliersProvider>
                 </InventoryDataProvider>
@@ -67,6 +71,7 @@ function AppRouter() {
             <Route path="history" element={<StockHistoryPage />} />
           </Route>
           <Route path="approvals" element={<ApprovalsPage />} />
+          <Route path="tickets" element={<TicketsPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="warehouses" element={<WarehousesPage />} />
           <Route path="activity-log" element={<ActivityLogPage />} />
