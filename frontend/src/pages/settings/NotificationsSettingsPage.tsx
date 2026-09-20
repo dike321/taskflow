@@ -23,6 +23,16 @@ const toggles: { key: keyof NotificationPreferences; label: string; description:
     description: 'Notify when a batch/lot is expired or expiring within 30 days',
   },
   {
+    key: 'ticketAssignedAlert',
+    label: 'Ticket assigned alert',
+    description: 'Notify when a ticket is assigned to you and still open',
+  },
+  {
+    key: 'ticketCommentAlert',
+    label: 'Ticket comment alert',
+    description: 'Notify when someone comments on a ticket you reported or are assigned to',
+  },
+  {
     key: 'emailNotifications',
     label: 'Email notifications',
     description: 'Also send the above alerts by email, in addition to in-app notifications',

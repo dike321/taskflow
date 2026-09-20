@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { Form } from 'react-bootstrap'
 import { Link } from 'react-router-dom'
 import Dropdown from '../ui/Dropdown'
-import { AlertTriangle, Bell, ClipboardCheck, Search, User, Users } from './Icons'
+import { AlertTriangle, Bell, ClipboardCheck, MessageSquare, Search, Ticket, User, Users } from './Icons'
 import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
 import { mockUsers } from '../../data/users'
@@ -12,6 +12,7 @@ import { getBatchStatus, getStockQuantity, useInventoryData } from '../../data/i
 import type { StockTransactionType } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
 import { useNotificationPreferences } from '../../data/settings'
+import { useTickets } from '../../data/tickets'
 
 interface NotificationItem {
   id: string
@@ -32,6 +33,7 @@ export default function Header() {
   const { items, transactions, warehouseStock, stockOpnames, batches } = useInventoryData()
   const { warehouses } = useWarehouses()
   const { preferences } = useNotificationPreferences()
+  const { tickets, comments: ticketComments } = useTickets()
 
   const getWarehouseName = (warehouseId?: number) =>
     warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
@@ -106,8 +108,65 @@ export default function Header() {
             })
         : []
 
-    return [...pendingApprovals, ...pendingOpnames, ...expiryAlerts, ...lowStock]
-  }, [items, transactions, stockOpnames, batches, warehouseStock, warehouses, preferences, currentUser])
+    const ticketsAssignedToMe: NotificationItem[] =
+      preferences.ticketAssignedAlert && hasModuleAccess(currentUser, 'tickets')
+        ? tickets
+            .filter(
+              (t) => t.assigneeId === currentUser.id && (t.status === 'open' || t.status === 'in_progress'),
+            )
+            .map((t) => ({
+              id: `ticket-assigned-${t.id}`,
+              icon: Ticket,
+              variant: 'warning' as const,
+              title: `Ticket assigned to you: ${t.title}`,
+              description: `${t.category} · ${t.priority} priority`,
+              to: '/tickets',
+            }))
+        : []
+
+    const ticketNewComments: NotificationItem[] =
+      preferences.ticketCommentAlert && hasModuleAccess(currentUser, 'tickets')
+        ? tickets
+            .filter((t) => t.reporterId === currentUser.id || t.assigneeId === currentUser.id)
+            .flatMap((t) => {
+              const latest = ticketComments
+                .filter((c) => c.ticketId === t.id && c.userId !== currentUser.id)
+                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+              if (!latest) return []
+              const author = mockUsers.find((u) => u.id === latest.userId)
+              return [
+                {
+                  id: `ticket-comment-${latest.id}`,
+                  icon: MessageSquare,
+                  variant: 'warning' as const,
+                  title: `New comment on: ${t.title}`,
+                  description: `${author?.name ?? 'Unknown'}: ${latest.text}`,
+                  to: '/tickets',
+                },
+              ]
+            })
+        : []
+
+    return [
+      ...pendingApprovals,
+      ...pendingOpnames,
+      ...ticketsAssignedToMe,
+      ...ticketNewComments,
+      ...expiryAlerts,
+      ...lowStock,
+    ]
+  }, [
+    items,
+    transactions,
+    stockOpnames,
+    batches,
+    warehouseStock,
+    warehouses,
+    preferences,
+    currentUser,
+    tickets,
+    ticketComments,
+  ])
 
   return (
     <header

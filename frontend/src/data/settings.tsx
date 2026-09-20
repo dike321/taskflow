@@ -19,6 +19,8 @@ export interface NotificationPreferences {
   lowStockAlert: boolean
   approvalPendingAlert: boolean
   expiryAlert: boolean
+  ticketAssignedAlert: boolean
+  ticketCommentAlert: boolean
   emailNotifications: boolean
 }
 
@@ -26,6 +28,8 @@ export const mockNotificationPreferences: NotificationPreferences = {
   lowStockAlert: true,
   approvalPendingAlert: true,
   expiryAlert: true,
+  ticketAssignedAlert: true,
+  ticketCommentAlert: true,
   emailNotifications: false,
 }
 
