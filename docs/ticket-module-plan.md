@@ -60,13 +60,27 @@ Terintegrasi ke `Activity Log` (create/update/delete/status-change/comment semua
 - `AppRouter.tsx`: `<Route path="tickets" element={<TicketsPage />} />` di level yang sama dengan `suppliers`/`warehouses` (bukan nested), dibungkus `<TicketsProvider>` sejajar `SuppliersProvider`/`WarehousesProvider`.
 - `Sidebar.tsx`: menu "Tickets" pakai icon `Ticket` (sudah ada di `Icons.tsx` sejak awal, belum pernah dipakai), digating `hasModuleAccess(currentUser, 'tickets')`.
 
+## Notifikasi — `Header.tsx` [Selesai]
+
+Mengikuti pola derived-notification yang sudah ada (low stock/pending approval/expiry, semua dihitung ulang tiap render via `useMemo`, tanpa state read/unread tersendiri):
+- **Ticket assigned alert**: tiket dengan `assigneeId === currentUser.id` dan status `open`/`in_progress`.
+- **Ticket comment alert**: komentar terbaru pada tiket di mana currentUser adalah reporter/assignee, dan bukan komentar dari diri sendiri (maks 1 notifikasi per tiket, komentar terbaru saja).
+
+Keduanya digating `hasModuleAccess(currentUser, 'tickets')` + toggle baru di `NotificationPreferences` (`ticketAssignedAlert`, `ticketCommentAlert`), diatur dari `NotificationsSettingsPage.tsx`.
+
+## Reports — `ReportsPage.tsx` [Selesai]
+
+Ditambahkan selector "Report" (Inventory Mutations / Tickets) di atas halaman Reports yang sudah ada — bukan halaman baru, supaya sejalan dengan satu module permission `reports` yang sudah ada (Admin & Warehouse Supervisor). Saat "Tickets" dipilih:
+- 4 summary card: Total, Open, In Progress, Resolved/Closed.
+- Group By: Category / Status / Assignee (assignee kosong dikelompokkan sebagai "Unassigned"), dengan filter Category, Priority, dan rentang tanggal (`createdAt`).
+- Tabel breakdown per grup: Total + jumlah per status (Open/In Progress/Resolved/Closed).
+- Export CSV & Print/PDF pakai mekanisme yang sama seperti mutation report (branch berdasarkan `reportType`).
+
 ## Belum dikerjakan (roadmap lanjutan, di luar Phase 1)
 
 Sengaja tidak dikerjakan sekaligus supaya Phase 1 tetap fokus:
 1. **Attachment** di tiket (scan foto kerusakan, dsb) — pola `Attachment` sudah ada di `data/inventory.tsx`, tinggal digeneralisasi kalau dibutuhkan.
-2. **Notifikasi** — bell notifikasi sudah ada untuk low stock & pending approval; belum ada entry "tiket baru ditugaskan ke saya" / "tiket saya di-comment".
-3. **SLA & escalation** — belum ada due-date overdue alert atau eskalasi otomatis kalau lewat due date.
-4. **Reports** — belum masuk ke `ReportsPage.tsx` (jumlah tiket per kategori/status/assignee).
+2. **SLA & escalation** — belum ada due-date overdue alert atau eskalasi otomatis kalau lewat due date (bisa nebeng ke notification bell yang sudah dibuat).
 
 ## Verifikasi
 

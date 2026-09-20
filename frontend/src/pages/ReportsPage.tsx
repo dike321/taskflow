@@ -11,10 +11,14 @@ import { CATEGORIES, getStockQuantity, useInventoryData } from '../data/inventor
 import type { StockOpname, StockTransaction } from '../data/inventory'
 import { useWarehouses } from '../data/warehouses'
 import { useSession } from '../data/session'
-import { DEPARTMENTS } from '../data/users'
+import { DEPARTMENTS, mockUsers } from '../data/users'
 import { hasPermission } from '../utils/permissions'
+import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES, useTickets } from '../data/tickets'
+import type { Ticket, TicketStatus } from '../data/tickets'
 
+type ReportType = 'inventory' | 'tickets'
 type GroupBy = 'category' | 'warehouse' | 'department'
+type TicketGroupBy = 'category' | 'status' | 'assignee'
 
 interface ReportRow {
   key: string
@@ -33,6 +37,31 @@ interface DepartmentRow {
   stockOut: number
   transactionCount: number
   percentOfTotal: number
+}
+
+interface TicketReportRow {
+  key: string
+  label: string
+  total: number
+  open: number
+  inProgress: number
+  resolved: number
+  closed: number
+}
+
+const TICKET_STATUS_KEY: Record<TicketStatus, 'open' | 'inProgress' | 'resolved' | 'closed'> = {
+  open: 'open',
+  in_progress: 'inProgress',
+  resolved: 'resolved',
+  closed: 'closed',
+}
+
+function aggregateTickets(ticketList: Ticket[]) {
+  const counts = { total: ticketList.length, open: 0, inProgress: 0, resolved: 0, closed: 0 }
+  ticketList.forEach((t) => {
+    counts[TICKET_STATUS_KEY[t.status]] += 1
+  })
+  return counts
 }
 
 function aggregate(
@@ -81,15 +110,24 @@ function aggregate(
 export default function ReportsPage() {
   const { items, transactions, stockOpnames, warehouseStock } = useInventoryData()
   const { warehouses } = useWarehouses()
+  const { tickets } = useTickets()
   const { currentUser } = useSession()
 
   const canExport = hasPermission(currentUser, 'reports', 'export')
+
+  const [reportType, setReportType] = useState<ReportType>('inventory')
 
   const [groupBy, setGroupBy] = useState<GroupBy>('category')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [warehouseFilter, setWarehouseFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+
+  const [ticketGroupBy, setTicketGroupBy] = useState<TicketGroupBy>('category')
+  const [ticketCategoryFilter, setTicketCategoryFilter] = useState('all')
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState('all')
+  const [ticketDateFrom, setTicketDateFrom] = useState('')
+  const [ticketDateTo, setTicketDateTo] = useState('')
 
   const scopedItemIds = useMemo(
     () => items.filter((item) => categoryFilter === 'all' || item.category === categoryFilter).map((item) => item.id),
@@ -183,7 +221,72 @@ export default function ReportsPage() {
     }).filter((row) => row.transactionCount > 0)
   }, [groupBy, scopedItemIds, scopedWarehouseIds, transactions, dateFrom, dateTo])
 
+  const scopedTickets = useMemo(() => {
+    const withinDate = (date: string) => (!ticketDateFrom || date >= ticketDateFrom) && (!ticketDateTo || date <= ticketDateTo)
+    return tickets.filter(
+      (t) =>
+        (ticketCategoryFilter === 'all' || t.category === ticketCategoryFilter) &&
+        (ticketPriorityFilter === 'all' || t.priority === ticketPriorityFilter) &&
+        withinDate(t.createdAt),
+    )
+  }, [tickets, ticketCategoryFilter, ticketPriorityFilter, ticketDateFrom, ticketDateTo])
+
+  const ticketTotals = useMemo(() => aggregateTickets(scopedTickets), [scopedTickets])
+
+  const ticketRows = useMemo<TicketReportRow[]>(() => {
+    if (ticketGroupBy === 'category') {
+      return TICKET_CATEGORIES.filter((c) => ticketCategoryFilter === 'all' || c === ticketCategoryFilter).map(
+        (category) => ({
+          key: category,
+          label: category,
+          ...aggregateTickets(scopedTickets.filter((t) => t.category === category)),
+        }),
+      )
+    }
+
+    if (ticketGroupBy === 'status') {
+      return TICKET_STATUSES.map((status) => ({
+        key: status,
+        label: status.replace('_', ' '),
+        ...aggregateTickets(scopedTickets.filter((t) => t.status === status)),
+      }))
+    }
+
+    const assigneeIds = Array.from(new Set(scopedTickets.map((t) => t.assigneeId ?? 0)))
+    return assigneeIds
+      .map((assigneeId) => ({
+        key: String(assigneeId),
+        label: assigneeId === 0 ? 'Unassigned' : (mockUsers.find((u) => u.id === assigneeId)?.name ?? 'Unknown'),
+        ...aggregateTickets(scopedTickets.filter((t) => (t.assigneeId ?? 0) === assigneeId)),
+      }))
+      .sort((a, b) => b.total - a.total)
+  }, [ticketGroupBy, ticketCategoryFilter, scopedTickets])
+
   const handleExportCsv = () => {
+    if (reportType === 'tickets') {
+      const header = [
+        ticketGroupBy === 'category' ? 'Category' : ticketGroupBy === 'status' ? 'Status' : 'Assignee',
+        'Total',
+        'Open',
+        'In Progress',
+        'Resolved',
+        'Closed',
+      ]
+      const csvRows = ticketRows.map((row) => [row.label, row.total, row.open, row.inProgress, row.resolved, row.closed])
+      const csv = [header, ...csvRows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `ticket-report-${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+      return
+    }
+
     const header =
       groupBy === 'department'
         ? ['Department', 'Stock Out', 'Transactions', '% of Total']
@@ -271,11 +374,30 @@ export default function ReportsPage() {
     },
   ]
 
+  const ticketColumns = [
+    {
+      key: 'label',
+      header: ticketGroupBy === 'category' ? 'Category' : ticketGroupBy === 'status' ? 'Status' : 'Assignee',
+      render: (row: TicketReportRow) => (
+        <span className={ticketGroupBy === 'status' ? 'text-capitalize' : ''}>{row.label}</span>
+      ),
+    },
+    { key: 'total', header: 'Total' },
+    { key: 'open', header: 'Open' },
+    { key: 'inProgress', header: 'In Progress' },
+    { key: 'resolved', header: 'Resolved' },
+    { key: 'closed', header: 'Closed' },
+  ]
+
   return (
     <div>
       <PageToolbar
         title="Reports"
-        description="Mutation summary by category, warehouse, or department (cost center), for the selected period"
+        description={
+          reportType === 'tickets'
+            ? 'Ticket summary by category, status, or assignee, for the selected period'
+            : 'Mutation summary by category, warehouse, or department (cost center), for the selected period'
+        }
         actions={
           canExport && (
             <div className="d-flex gap-2 no-print">
@@ -292,83 +414,177 @@ export default function ReportsPage() {
         }
       />
 
-      <Row className="g-3 mb-4">
-        <Col xs={6} md={3}>
-          <Card className="h-100">
-            <p className="text-muted small mb-1">Total Stock In</p>
-            <p className="fs-4 fw-bold text-success mb-0">+{totals.stockIn}</p>
-          </Card>
-        </Col>
-        <Col xs={6} md={3}>
-          <Card className="h-100">
-            <p className="text-muted small mb-1">Total Stock Out</p>
-            <p className="fs-4 fw-bold text-danger mb-0">-{totals.stockOut}</p>
-          </Card>
-        </Col>
-        <Col xs={6} md={3}>
-          <Card className="h-100">
-            <p className="text-muted small mb-1">Net Change</p>
-            <p className={`fs-4 fw-bold mb-0 ${totals.netChange >= 0 ? 'text-success' : 'text-danger'}`}>
-              {totals.netChange > 0 ? '+' : ''}
-              {totals.netChange}
-            </p>
-          </Card>
-        </Col>
-        <Col xs={6} md={3}>
-          <Card className="h-100">
-            <p className="text-muted small mb-1">Current Stock (scope)</p>
-            <p className="fs-4 fw-bold mb-0">{currentStockTotal}</p>
-          </Card>
+      <Row className="g-3 mb-4 no-print">
+        <Col xs={12} md={4} lg={3}>
+          <Select label="Report" value={reportType} onChange={(e) => setReportType(e.target.value as ReportType)}>
+            <option value="inventory">Inventory Mutations</option>
+            <option value="tickets">Tickets</option>
+          </Select>
         </Col>
       </Row>
 
-      <Card>
-        <Row className="g-3 mb-3 no-print">
-          <Col xs={12} md={6} lg={2}>
-            <Select label="Group By" value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
-              <option value="category">Category</option>
-              <option value="warehouse">Warehouse</option>
-              <option value="department">Department (Cost Center)</option>
-            </Select>
-          </Col>
-          <Col xs={12} md={6} lg={2}>
-            <Select label="Category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="all">All Categories</option>
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={12} md={6} lg={2}>
-            <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-              <option value="all">All Warehouses</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name}
-                </option>
-              ))}
-            </Select>
-          </Col>
-          <Col xs={12} md={6} lg={3}>
-            <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          </Col>
-          <Col xs={12} md={6} lg={3}>
-            <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </Col>
-        </Row>
+      {reportType === 'inventory' ? (
+        <>
+          <Row className="g-3 mb-4">
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Total Stock In</p>
+                <p className="fs-4 fw-bold text-success mb-0">+{totals.stockIn}</p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Total Stock Out</p>
+                <p className="fs-4 fw-bold text-danger mb-0">-{totals.stockOut}</p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Net Change</p>
+                <p className={`fs-4 fw-bold mb-0 ${totals.netChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                  {totals.netChange > 0 ? '+' : ''}
+                  {totals.netChange}
+                </p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Current Stock (scope)</p>
+                <p className="fs-4 fw-bold mb-0">{currentStockTotal}</p>
+              </Card>
+            </Col>
+          </Row>
 
-        {groupBy === 'department' ? (
-          <Table
-            columns={departmentColumns}
-            data={departmentRows}
-            emptyMessage="No approved Stock Out transactions with a department for the selected filters"
-          />
-        ) : (
-          <Table columns={columns} data={rows} emptyMessage="No data for the selected filters" />
-        )}
-      </Card>
+          <Card>
+            <Row className="g-3 mb-3 no-print">
+              <Col xs={12} md={6} lg={2}>
+                <Select label="Group By" value={groupBy} onChange={(e) => setGroupBy(e.target.value as GroupBy)}>
+                  <option value="category">Category</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="department">Department (Cost Center)</option>
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={2}>
+                <Select label="Category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                  <option value="all">All Categories</option>
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={2}>
+                <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
+                  <option value="all">All Warehouses</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={3}>
+                <Input label="From" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              </Col>
+              <Col xs={12} md={6} lg={3}>
+                <Input label="To" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              </Col>
+            </Row>
+
+            {groupBy === 'department' ? (
+              <Table
+                columns={departmentColumns}
+                data={departmentRows}
+                emptyMessage="No approved Stock Out transactions with a department for the selected filters"
+              />
+            ) : (
+              <Table columns={columns} data={rows} emptyMessage="No data for the selected filters" />
+            )}
+          </Card>
+        </>
+      ) : (
+        <>
+          <Row className="g-3 mb-4">
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Total Tickets</p>
+                <p className="fs-4 fw-bold mb-0">{ticketTotals.total}</p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Open</p>
+                <p className="fs-4 fw-bold text-warning mb-0">{ticketTotals.open}</p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">In Progress</p>
+                <p className="fs-4 fw-bold text-info mb-0">{ticketTotals.inProgress}</p>
+              </Card>
+            </Col>
+            <Col xs={6} md={3}>
+              <Card className="h-100">
+                <p className="text-muted small mb-1">Resolved / Closed</p>
+                <p className="fs-4 fw-bold text-success mb-0">{ticketTotals.resolved + ticketTotals.closed}</p>
+              </Card>
+            </Col>
+          </Row>
+
+          <Card>
+            <Row className="g-3 mb-3 no-print">
+              <Col xs={12} md={6} lg={2}>
+                <Select
+                  label="Group By"
+                  value={ticketGroupBy}
+                  onChange={(e) => setTicketGroupBy(e.target.value as TicketGroupBy)}
+                >
+                  <option value="category">Category</option>
+                  <option value="status">Status</option>
+                  <option value="assignee">Assignee</option>
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={2}>
+                <Select
+                  label="Category"
+                  value={ticketCategoryFilter}
+                  onChange={(e) => setTicketCategoryFilter(e.target.value)}
+                >
+                  <option value="all">All Categories</option>
+                  {TICKET_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={2}>
+                <Select
+                  label="Priority"
+                  value={ticketPriorityFilter}
+                  onChange={(e) => setTicketPriorityFilter(e.target.value)}
+                >
+                  <option value="all">All Priorities</option>
+                  {TICKET_PRIORITIES.map((priority) => (
+                    <option key={priority} value={priority} className="text-capitalize">
+                      {priority}
+                    </option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={12} md={6} lg={3}>
+                <Input label="From" type="date" value={ticketDateFrom} onChange={(e) => setTicketDateFrom(e.target.value)} />
+              </Col>
+              <Col xs={12} md={6} lg={3}>
+                <Input label="To" type="date" value={ticketDateTo} onChange={(e) => setTicketDateTo(e.target.value)} />
+              </Col>
+            </Row>
+
+            <Table columns={ticketColumns} data={ticketRows} emptyMessage="No tickets for the selected filters" />
+          </Card>
+        </>
+      )}
     </div>
   )
 }
