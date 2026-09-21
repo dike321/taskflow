@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { Attachment } from '../utils/attachments'
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent'
@@ -20,6 +21,8 @@ export interface Ticket {
   createdAt: string
   dueDate?: string
   resolvedAt?: string
+  /** Scan/foto pendukung, mis. bukti kerusakan */
+  attachments?: Attachment[]
 }
 
 export interface TicketComment {

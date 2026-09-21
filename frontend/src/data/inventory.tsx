@@ -1,5 +1,8 @@
 import { createContext, useContext, useState } from 'react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { Attachment } from '../utils/attachments'
+
+export type { Attachment } from '../utils/attachments'
 
 export interface Item {
   id: number
@@ -92,13 +95,6 @@ export function adjustWarehouseStock(
 }
 
 export type StockTransactionType = 'in' | 'out' | 'transfer'
-
-export interface Attachment {
-  id: number
-  name: string
-  size: number
-  url: string
-}
 
 export interface StockTransaction {
   id: number

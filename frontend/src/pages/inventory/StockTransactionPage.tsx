@@ -18,7 +18,7 @@ import {
   hasUnitConversion,
   isBatchTracked,
 } from '../../data/inventory'
-import type { Attachment, Batch, StockTransaction } from '../../data/inventory'
+import type { Batch, StockTransaction } from '../../data/inventory'
 import { mockUsers, DEPARTMENTS } from '../../data/users'
 import { useSession } from '../../data/session'
 import { useActivityLog } from '../../data/activityLog'
@@ -27,6 +27,7 @@ import { useApprovalSettings } from '../../data/settings'
 import { useWarehouses } from '../../data/warehouses'
 import { hasPermission } from '../../utils/permissions'
 import { parseIntInput, formatFileSize } from '../../utils/number'
+import { filesToAttachments } from '../../utils/attachments'
 import type { InventoryContext } from './InventoryLayout'
 
 interface StockTransactionPageProps {
@@ -196,12 +197,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     const withinThreshold = baseQuantity <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
 
-    const attachments: Attachment[] = files.map((file, index) => ({
-      id: index + 1,
-      name: file.name,
-      size: file.size,
-      url: URL.createObjectURL(file),
-    }))
+    const attachments = filesToAttachments(files)
 
     const usesPurchaseUnit = type === 'in' && itemHasConversion && formData.unitMode === 'purchase'
 

@@ -82,9 +82,14 @@ Ditambahkan selector "Report" (Inventory Mutations / Tickets) di atas halaman Re
 - **List & detail Tickets**: badge merah "Overdue" di kolom Due Date + alert banner di modal detail kalau tiket overdue.
 - **Notifikasi (escalation)**: toggle `ticketOverdueAlert` baru. Assignee tiket overdue selalu dapat notifikasi; user dengan permission `edit` pada module `tickets` (Admin/Supervisor) dapat notifikasi untuk **semua** tiket overdue termasuk yang unassigned (eskalasi ke manajemen), bukan cuma milik sendiri — dedup otomatis by ticket id kalau assignee juga punya `edit`.
 
-## Belum dikerjakan (roadmap lanjutan, di luar Phase 1)
+## Attachment — `utils/attachments.ts`, `TicketsPage.tsx` [Selesai]
 
-1. **Attachment** di tiket (scan foto kerusakan, dsb) — pola `Attachment` sudah ada di `data/inventory.tsx`, tinggal digeneralisasi kalau dibutuhkan. Ini satu-satunya item roadmap awal yang belum dikerjakan.
+Tipe `Attachment` dan helper `filesToAttachments()` dipindah dari `data/inventory.tsx` ke `utils/attachments.ts` (shared, generic) — `data/inventory.tsx` re-export tipe itu supaya `StockHistoryPage.tsx`/`StockTransactionPage.tsx` tidak perlu diubah, dan `StockTransactionPage.tsx` sekarang pakai helper yang sama alih-alih inline map sendiri.
+- `Ticket` punya field `attachments?: Attachment[]` opsional.
+- **Add/Edit modal**: input file (multiple) + list existing attachment dengan tombol hapus per-item; file baru digabung dengan yang lama (bukan replace) saat submit.
+- **Detail modal**: section "Attachments" menampilkan link download/preview (blob URL, hanya valid selama sesi browser — sama seperti attachment Stock In/Out, karena tidak ada backend storage nyata).
+
+Roadmap Phase 1 selesai — tidak ada item tersisa dari daftar awal.
 
 ## Verifikasi
 

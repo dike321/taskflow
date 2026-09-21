@@ -9,7 +9,7 @@ import Input from '../components/ui/Input'
 import Select from '../components/ui/Select'
 import Badge from '../components/ui/Badge'
 import PageToolbar from '../components/common/PageToolbar'
-import { Pencil, Trash2, Plus } from '../components/common/Icons'
+import { Pencil, Trash2, Plus, Paperclip } from '../components/common/Icons'
 import {
   TICKET_CATEGORIES,
   TICKET_PRIORITIES,
@@ -23,6 +23,9 @@ import { mockUsers } from '../data/users'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
 import { hasPermission } from '../utils/permissions'
+import { formatFileSize } from '../utils/number'
+import { filesToAttachments } from '../utils/attachments'
+import type { Attachment } from '../utils/attachments'
 
 const emptyFormData = {
   title: '',
@@ -80,6 +83,8 @@ export default function TicketsPage() {
   const [detailTarget, setDetailTarget] = useState<Ticket | null>(null)
   const [formData, setFormData] = useState(emptyFormData)
   const [commentText, setCommentText] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const [existingAttachments, setExistingAttachments] = useState<Attachment[]>([])
 
   const [titleQuery, setTitleQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -109,6 +114,8 @@ export default function TicketsPage() {
   const handleAdd = () => {
     setEditingTicket(null)
     setFormData(emptyFormData)
+    setFiles([])
+    setExistingAttachments([])
     setIsModalOpen(true)
   }
 
@@ -122,6 +129,8 @@ export default function TicketsPage() {
       assigneeId: ticket.assigneeId ?? 0,
       dueDate: ticket.dueDate ?? '',
     })
+    setFiles([])
+    setExistingAttachments(ticket.attachments ?? [])
     setIsModalOpen(true)
   }
 
@@ -146,6 +155,8 @@ export default function TicketsPage() {
     e.preventDefault()
 
     const assigneeId = formData.assigneeId || undefined
+    const newAttachments = filesToAttachments(files, Math.max(...existingAttachments.map((a) => a.id), 0) + 1)
+    const attachments = [...existingAttachments, ...newAttachments]
 
     if (editingTicket) {
       setTickets(
@@ -159,6 +170,7 @@ export default function TicketsPage() {
                 priority: formData.priority,
                 assigneeId,
                 dueDate: formData.dueDate || undefined,
+                attachments: attachments.length > 0 ? attachments : undefined,
               }
             : t,
         ),
@@ -182,6 +194,7 @@ export default function TicketsPage() {
         assigneeId,
         createdAt: today(),
         dueDate: formData.dueDate || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
       }
       setTickets([...tickets, newTicket])
       logActivity({
@@ -416,6 +429,42 @@ export default function TicketsPage() {
             value={formData.dueDate}
             onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
           />
+          <Input
+            label="Attachments (optional)"
+            type="file"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+          />
+          {existingAttachments.length > 0 && (
+            <ul className="list-unstyled small text-muted mb-0 d-flex flex-column gap-1">
+              {existingAttachments.map((attachment) => (
+                <li key={attachment.id} className="d-flex align-items-center gap-2">
+                  <Paperclip size={14} />
+                  <span className="flex-fill">
+                    {attachment.name} ({formatFileSize(attachment.size)})
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExistingAttachments(existingAttachments.filter((a) => a.id !== attachment.id))}
+                  >
+                    <Trash2 size={14} className="text-danger" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {files.length > 0 && (
+            <ul className="list-unstyled small text-muted mb-0 d-flex flex-column gap-1">
+              {files.map((file, index) => (
+                <li key={index} className="d-flex align-items-center gap-1">
+                  <Paperclip size={14} />
+                  {file.name} ({formatFileSize(file.size)})
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="d-flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-fill">
               Cancel
@@ -479,6 +528,26 @@ export default function TicketsPage() {
             {isTicketOverdue(detailTarget) && (
               <div className="alert alert-danger py-2 px-3 mb-0 small">
                 This ticket is overdue — due date has passed and it is still {statusLabel[detailTarget.status].toLowerCase()}.
+              </div>
+            )}
+
+            {detailTarget.attachments && detailTarget.attachments.length > 0 && (
+              <div>
+                <p className="fw-medium mb-2">Attachments</p>
+                <div className="d-flex flex-column gap-1">
+                  {detailTarget.attachments.map((attachment) => (
+                    <a
+                      key={attachment.id}
+                      href={attachment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="small d-flex align-items-center gap-1"
+                    >
+                      <Paperclip size={14} />
+                      {attachment.name} <span className="text-muted">({formatFileSize(attachment.size)})</span>
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 
