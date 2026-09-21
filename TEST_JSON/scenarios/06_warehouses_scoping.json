@@ -1,0 +1,40 @@
+{
+  "feature": "Warehouses & Multi-Warehouse View Scoping",
+  "scenarios": [
+    {
+      "id": "WH-01",
+      "type": "good",
+      "name": "Admin (warehouseId null) melihat semua gudang di semua modul",
+      "input": { "loginAs": "john@example.com", "checkPages": ["/inventory/items", "/inventory/stock-history", "/inventory/batches"] },
+      "expected": "Semua data dari WH-JKT, WH-SBY, WH-BDG tampil tanpa filter, ada kolom/filter Warehouse yang bisa dipilih bebas"
+    },
+    {
+      "id": "WH-02",
+      "type": "good",
+      "name": "Warehouse Staff terkunci ke satu gudang (warehouseId=1) tidak bisa lihat data gudang lain",
+      "input": { "loginAs": "alice@example.com", "checkPages": ["/inventory/stock-history", "/inventory/batches"] },
+      "expected": "Hanya data Gudang Pusat Jakarta (WH-JKT) yang tampil; filter Warehouse ter-disable/preset, tidak ada opsi pilih gudang lain"
+    },
+    {
+      "id": "WH-03",
+      "type": "bad",
+      "name": "Warehouse Staff coba akses stock transaction gudang lain via manipulasi form/URL",
+      "input": { "loginAs": "alice@example.com", "attemptWarehouseId": 2, "action": "create_stock_in" },
+      "expected": "Ditolak di level form (dropdown warehouse tidak menampilkan opsi lain) — perlu verifikasi tidak ada cara submit dengan warehouseId selain milik sendiri"
+    },
+    {
+      "id": "WH-04",
+      "type": "edge",
+      "name": "Warehouse Supervisor (warehouseId null) melihat semua gudang untuk approval",
+      "input": { "loginAs": "jane@example.com", "checkPages": ["/approvals"] },
+      "expected": "Semua approval request dari semua gudang tampil di daftar Approvals miliknya"
+    },
+    {
+      "id": "WH-05",
+      "type": "edge",
+      "name": "User dengan warehouseId=2 tapi status inactive coba lihat data",
+      "input": { "loginAs": "bob@example.com" },
+      "expected": "Tidak relevan — user ini tidak bisa login sama sekali (status inactive), lihat AUTH-03. Dicatat sebagai cross-check antara Auth dan Warehouse scoping"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "feature": "Tickets Reports & Notifications",
+  "scenarios": [
+    {
+      "id": "TKTREP-01",
+      "type": "good",
+      "name": "Filter Ticket Report by date range & category",
+      "input": { "dateFrom": "2026-09-01", "dateTo": "2026-09-21", "category": "IT" },
+      "expected": "Report menampilkan hanya ticket kategori IT dalam rentang tanggal tsb, total count sesuai"
+    },
+    {
+      "id": "TKTREP-02",
+      "type": "edge",
+      "name": "Filter Ticket Report dengan rentang tanggal tanpa data",
+      "input": { "dateFrom": "2020-01-01", "dateTo": "2020-01-31" },
+      "expected": "Report kosong, tampil pesan 'Tidak ada data' bukan error/crash"
+    },
+    {
+      "id": "TKTREP-03",
+      "type": "good",
+      "name": "Export/lihat summary ticket by status (open/in_progress/resolved/closed)",
+      "input": { "groupBy": "status" },
+      "expected": "Chart/tabel summary menampilkan jumlah ticket per status secara akurat sesuai data ticket saat ini"
+    },
+    {
+      "id": "NOTIF-01",
+      "type": "good",
+      "name": "Notifikasi muncul saat ticket baru dibuat & di-assign",
+      "input": { "action": "create_ticket_then_check_bell" },
+      "expected": "Notification bell menampilkan badge count bertambah, item notifikasi baru dengan link ke ticket terkait"
+    },
+    {
+      "id": "NOTIF-02",
+      "type": "edge",
+      "name": "Mark all notifications as read",
+      "input": { "action": "mark_all_read" },
+      "expected": "Badge count jadi 0, semua item notifikasi berubah state jadi read (styling berbeda)"
+    }
+  ]
+}

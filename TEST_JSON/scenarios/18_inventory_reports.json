@@ -1,0 +1,40 @@
+{
+  "feature": "Inventory Reports",
+  "scenarios": [
+    {
+      "id": "INVREP-01",
+      "type": "good",
+      "name": "Lihat report stok saat ini per gudang",
+      "input": { "warehouseId": 1 },
+      "expected": "Report menampilkan qty stok per item khusus Gudang Pusat Jakarta, total sesuai transaksi yang sudah approved"
+    },
+    {
+      "id": "INVREP-02",
+      "type": "good",
+      "name": "Filter report item dengan stok di bawah minStock (low stock alert)",
+      "input": { "filter": "below_min_stock" },
+      "expected": "Hanya item yang qty < minStock yang tampil, dengan badge/warning low stock"
+    },
+    {
+      "id": "INVREP-03",
+      "type": "bad",
+      "name": "Filter report dengan kombinasi warehouse & kategori tanpa hasil",
+      "input": { "warehouseId": 3, "category": "Elektronik" },
+      "expected": "Jika belum ada transaksi elektronik masuk ke WH-BDG, report kosong dengan pesan yang jelas, bukan error"
+    },
+    {
+      "id": "INVREP-04",
+      "type": "edge",
+      "name": "Warehouse Staff melihat report — hanya data gudangnya sendiri",
+      "input": { "loginAs": "alice@example.com" },
+      "expected": "Report otomatis ter-scope ke warehouseId=1 saja, tidak ada opsi pilih gudang lain"
+    },
+    {
+      "id": "INVREP-05",
+      "type": "good",
+      "name": "Lihat histori pergerakan stok (mutasi) untuk satu item",
+      "input": { "itemId": 1, "warehouseId": 1 },
+      "expected": "Tabel histori menampilkan semua transaksi in/out/transfer/adjustment item tsb urut kronologis dengan saldo berjalan"
+    }
+  ]
+}

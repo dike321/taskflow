@@ -1,0 +1,40 @@
+{
+  "feature": "Stock In (with Approval Threshold)",
+  "scenarios": [
+    {
+      "id": "SIN-01",
+      "type": "good",
+      "name": "Stock In di bawah approval threshold — langsung approved",
+      "input": { "itemId": 2, "warehouseId": 1, "qty": 50, "unit": "pcs", "note": "Restock rutin" },
+      "expected": "Transaksi langsung berstatus approved (nilai di bawah approvalThreshold), stok item bertambah otomatis"
+    },
+    {
+      "id": "SIN-02",
+      "type": "good",
+      "name": "Stock In di atas approval threshold — masuk status pending",
+      "input": { "itemId": 3, "warehouseId": 1, "qty": 10, "unit": "unit", "note": "Pembelian laptop baru" },
+      "expected": "Transaksi berstatus 'pending', stok belum bertambah sampai di-approve oleh Warehouse Supervisor"
+    },
+    {
+      "id": "SIN-03",
+      "type": "bad",
+      "name": "Stock In dengan qty 0 atau negatif",
+      "input": { "itemId": 1, "warehouseId": 1, "qty": 0 },
+      "expected": "Validasi menahan submit, qty harus > 0"
+    },
+    {
+      "id": "SIN-04",
+      "type": "bad",
+      "name": "Stock In tanpa pilih item/warehouse",
+      "input": { "itemId": null, "warehouseId": null, "qty": 10 },
+      "expected": "Validasi menahan submit, field wajib diisi"
+    },
+    {
+      "id": "SIN-05",
+      "type": "edge",
+      "name": "Stock In dengan purchase unit (karton) — cek konversi ke base unit",
+      "input": { "itemId": 1, "warehouseId": 1, "qty": 2, "unit": "karton" },
+      "expected": "Stok bertambah 2 x purchaseConversionFactor(5) = 10 rim di base unit"
+    }
+  ]
+}

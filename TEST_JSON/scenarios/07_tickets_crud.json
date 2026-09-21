@@ -1,0 +1,46 @@
+{
+  "feature": "Tickets CRUD & Status Workflow",
+  "scenarios": [
+    {
+      "id": "TKT-01",
+      "type": "good",
+      "name": "Create ticket baru lengkap",
+      "input": {
+        "title": "Printer di lantai 2 tidak menyala",
+        "description": "Sudah dicoba restart, tetap mati",
+        "category": "IT",
+        "priority": "high",
+        "department": "IT"
+      },
+      "expected": "Ticket baru masuk list dengan status 'open', muncul notifikasi ke assignee/admin"
+    },
+    {
+      "id": "TKT-02",
+      "type": "bad",
+      "name": "Create ticket tanpa title/category",
+      "input": { "title": "", "category": "" },
+      "expected": "Validasi menahan submit, form tidak ter-submit"
+    },
+    {
+      "id": "TKT-03",
+      "type": "good",
+      "name": "Update status ticket open -> in_progress -> resolved -> closed",
+      "input": { "targetTicketId": 1, "statusSequence": ["in_progress", "resolved", "closed"] },
+      "expected": "Status berubah bertahap sesuai urutan, histori status tercatat, tidak bisa skip status (misal open langsung ke closed tanpa lewat resolved) tergantung aturan workflow"
+    },
+    {
+      "id": "TKT-04",
+      "type": "good",
+      "name": "Tambah komentar pada ticket",
+      "input": { "targetTicketId": 1, "comment": "Sudah dicek, ternyata kabel power longgar" },
+      "expected": "Komentar muncul di thread ticket dengan nama user & timestamp"
+    },
+    {
+      "id": "TKT-05",
+      "type": "bad",
+      "name": "Ticket priority 'urgent' tanpa response lama -> cek SLA escalation",
+      "input": { "targetTicketId": 1, "priority": "urgent", "simulateOverdue": true },
+      "expected": "Ticket ter-flag SLA breach/escalated, muncul badge/notifikasi eskalasi ke supervisor"
+    }
+  ]
+}

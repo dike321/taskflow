@@ -1,0 +1,40 @@
+{
+  "feature": "Stock Opname (Physical Count Reconciliation)",
+  "scenarios": [
+    {
+      "id": "OPN-01",
+      "type": "good",
+      "name": "Opname dengan hasil hitung sama dengan sistem (tidak ada selisih)",
+      "input": { "itemId": 2, "warehouseId": 1, "systemQty": 100, "countedQty": 100 },
+      "expected": "Opname tersimpan dengan selisih 0, tidak ada adjustment transaksi yang dibuat"
+    },
+    {
+      "id": "OPN-02",
+      "type": "good",
+      "name": "Opname dengan selisih kurang (counted < system)",
+      "input": { "itemId": 2, "warehouseId": 1, "systemQty": 100, "countedQty": 90 },
+      "expected": "Tercatat selisih -10, muncul adjustment transaksi tipe 'out' untuk menyesuaikan stok sistem ke hasil hitung fisik"
+    },
+    {
+      "id": "OPN-03",
+      "type": "good",
+      "name": "Opname dengan selisih lebih (counted > system)",
+      "input": { "itemId": 2, "warehouseId": 1, "systemQty": 100, "countedQty": 115 },
+      "expected": "Tercatat selisih +15, muncul adjustment transaksi tipe 'in'"
+    },
+    {
+      "id": "OPN-04",
+      "type": "bad",
+      "name": "Opname dengan countedQty negatif",
+      "input": { "itemId": 2, "warehouseId": 1, "countedQty": -5 },
+      "expected": "Validasi menahan submit, countedQty harus >= 0"
+    },
+    {
+      "id": "OPN-05",
+      "type": "edge",
+      "name": "Opname besar (selisih signifikan) butuh approval sebelum adjustment diterapkan",
+      "input": { "itemId": 3, "warehouseId": 1, "systemQty": 5, "countedQty": 0 },
+      "expected": "Selisih besar (-5 unit laptop) masuk status pending approval sebelum stok sistem benar-benar disesuaikan"
+    }
+  ]
+}

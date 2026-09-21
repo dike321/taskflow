@@ -1,0 +1,44 @@
+{
+  "feature": "Roles & Permissions Management",
+  "scenarios": [
+    {
+      "id": "ROLE-01",
+      "type": "good",
+      "name": "Create role baru dengan permission module custom",
+      "input": {
+        "name": "Finance Reviewer",
+        "approvalLevel": 1,
+        "permissions": { "tickets": ["view", "create"], "reports": ["view"] }
+      },
+      "expected": "Role baru muncul di tabel Roles, bisa dipilih di dropdown Role saat create/edit User"
+    },
+    {
+      "id": "ROLE-02",
+      "type": "bad",
+      "name": "Create role tanpa nama",
+      "input": { "name": "" },
+      "expected": "Validasi menahan submit, error 'Nama role wajib diisi'"
+    },
+    {
+      "id": "ROLE-03",
+      "type": "edge",
+      "name": "Set approvalLevel role jadi 2 (final approver) lalu cek efek di Approvals",
+      "input": { "targetRoleId": 3, "approvalLevel": 2 },
+      "expected": "User dengan role Warehouse Supervisor sekarang bisa approve transaksi di stage pending_level2"
+    },
+    {
+      "id": "ROLE-04",
+      "type": "bad",
+      "name": "Delete role yang masih dipakai user aktif",
+      "input": { "targetRoleId": 1 },
+      "expected": "Ditolak — muncul warning 'Role masih digunakan oleh N user, tidak bisa dihapus' (guard isRoleInUse)"
+    },
+    {
+      "id": "ROLE-05",
+      "type": "good",
+      "name": "Toggle permission checkbox per module lalu save",
+      "input": { "targetRoleId": 2, "module": "inventory", "actions": ["view", "create", "edit"] },
+      "expected": "Permission tersimpan, user dengan role tsb langsung kehilangan/dapat akses tombol sesuai action yang di-toggle (tanpa perlu re-login)"
+    }
+  ]
+}

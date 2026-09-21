@@ -1,0 +1,40 @@
+{
+  "feature": "Settings (General/Threshold, Notifications, My Profile)",
+  "scenarios": [
+    {
+      "id": "SET-01",
+      "type": "good",
+      "name": "Admin ubah approvalThreshold & escalationThreshold",
+      "input": { "loginAs": "john@example.com", "approvalThreshold": 200, "escalationThreshold": 1000 },
+      "expected": "Setting tersimpan (in-memory), transaksi Stock In/Out berikutnya memakai threshold baru untuk menentukan approval level"
+    },
+    {
+      "id": "SET-02",
+      "type": "bad",
+      "name": "Set escalationThreshold lebih kecil dari approvalThreshold",
+      "input": { "approvalThreshold": 500, "escalationThreshold": 100 },
+      "expected": "Validasi menahan submit atau warning logis — escalationThreshold seharusnya >= approvalThreshold"
+    },
+    {
+      "id": "SET-03",
+      "type": "good",
+      "name": "User non-Admin coba akses General Settings",
+      "input": { "loginAs": "alice@example.com", "attemptUrl": "/settings/general" },
+      "expected": "Menu tidak muncul di sidebar untuk role tanpa permission settings; akses langsung URL ditolak/redirect"
+    },
+    {
+      "id": "SET-04",
+      "type": "good",
+      "name": "Edit My Profile (nama, phone) sebagai user biasa",
+      "input": { "loginAs": "alice@example.com", "name": "Alice Brown Updated", "phone": "+6281234500000" },
+      "expected": "Profile tersimpan, nama baru langsung terlihat di Header (avatar/dropdown user)"
+    },
+    {
+      "id": "SET-05",
+      "type": "bad",
+      "name": "Edit My Profile dengan email format invalid",
+      "input": { "loginAs": "alice@example.com", "email": "bukan-email-valid" },
+      "expected": "Validasi menahan submit, format email harus valid"
+    }
+  ]
+}

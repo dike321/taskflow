@@ -1,0 +1,40 @@
+{
+  "feature": "Authentication (Login/Logout/Route Guard)",
+  "scenarios": [
+    {
+      "id": "AUTH-01",
+      "type": "good",
+      "name": "Login sukses dengan email terdaftar & aktif",
+      "input": { "email": "john@example.com", "password": "password123" },
+      "expected": "Redirect ke /dashboard, currentUser jadi John Doe (Admin), sidebar sesuai role"
+    },
+    {
+      "id": "AUTH-02",
+      "type": "bad",
+      "name": "Login gagal — email tidak terdaftar",
+      "input": { "email": "notexist@example.com", "password": "password123" },
+      "expected": "Tetap di /login, error 'Email tidak terdaftar' di bawah field Email"
+    },
+    {
+      "id": "AUTH-03",
+      "type": "bad",
+      "name": "Login gagal — akun berstatus inactive",
+      "input": { "email": "bob@example.com", "password": "password123" },
+      "expected": "Tetap di /login, error 'Akun ini nonaktif, hubungi admin'"
+    },
+    {
+      "id": "AUTH-04",
+      "type": "edge",
+      "name": "Route guard — akses /dashboard tanpa login",
+      "input": { "action": "navigate_direct", "url": "/dashboard", "authenticated": false },
+      "expected": "Redirect otomatis ke /login"
+    },
+    {
+      "id": "AUTH-05",
+      "type": "edge",
+      "name": "Logout lalu akses ulang halaman terproteksi",
+      "input": { "action": "logout_then_navigate", "url": "/tickets" },
+      "expected": "Redirect ke /login, session cleared"
+    }
+  ]
+}

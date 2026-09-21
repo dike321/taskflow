@@ -1,0 +1,40 @@
+{
+  "feature": "Stock Transfer (Antar Gudang)",
+  "scenarios": [
+    {
+      "id": "TRF-01",
+      "type": "good",
+      "name": "Transfer stok antar gudang dengan stok asal cukup",
+      "input": { "itemId": 1, "fromWarehouseId": 1, "toWarehouseId": 2, "qty": 10, "unit": "rim" },
+      "expected": "Stok gudang asal berkurang, stok gudang tujuan bertambah setelah approved (mengikuti alur approval threshold)"
+    },
+    {
+      "id": "TRF-02",
+      "type": "bad",
+      "name": "Transfer dengan gudang asal = gudang tujuan",
+      "input": { "itemId": 1, "fromWarehouseId": 1, "toWarehouseId": 1, "qty": 10 },
+      "expected": "Ditolak — error 'Gudang asal dan tujuan tidak boleh sama'"
+    },
+    {
+      "id": "TRF-03",
+      "type": "bad",
+      "name": "Transfer melebihi stok tersedia di gudang asal",
+      "input": { "itemId": 1, "fromWarehouseId": 1, "toWarehouseId": 2, "qty": 99999 },
+      "expected": "Ditolak — error 'Stok tidak mencukupi di gudang asal'"
+    },
+    {
+      "id": "TRF-04",
+      "type": "edge",
+      "name": "Warehouse Staff terkunci coba transfer keluar dari gudang lain",
+      "input": { "loginAs": "alice@example.com", "fromWarehouseId": 2, "toWarehouseId": 1, "qty": 5 },
+      "expected": "Dropdown 'From Warehouse' hanya menampilkan/preset warehouseId milik user (1), tidak bisa pilih gudang 2 sebagai asal"
+    },
+    {
+      "id": "TRF-05",
+      "type": "good",
+      "name": "Transfer yang butuh approval 2 tingkat (nilai besar)",
+      "input": { "itemId": 3, "fromWarehouseId": 1, "toWarehouseId": 3, "qty": 3, "unit": "unit" },
+      "expected": "Status pending -> pending_level2 -> approved, stok berpindah hanya setelah full approved oleh 2 approver berbeda"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "feature": "Stock Out (with Approval Threshold & Stock Validation)",
+  "scenarios": [
+    {
+      "id": "SOUT-01",
+      "type": "good",
+      "name": "Stock Out di bawah threshold dengan stok cukup",
+      "input": { "itemId": 2, "warehouseId": 1, "qty": 20, "unit": "pcs", "reason": "Kebutuhan operasional" },
+      "expected": "Transaksi approved otomatis, stok berkurang 20 pcs"
+    },
+    {
+      "id": "SOUT-02",
+      "type": "bad",
+      "name": "Stock Out melebihi stok yang tersedia",
+      "input": { "itemId": 3, "warehouseId": 1, "qty": 9999, "unit": "unit" },
+      "expected": "Ditolak — error 'Stok tidak mencukupi', transaksi tidak tersimpan"
+    },
+    {
+      "id": "SOUT-03",
+      "type": "good",
+      "name": "Stock Out di atas escalation threshold — masuk pending_level2",
+      "input": { "itemId": 3, "warehouseId": 1, "qty": 5, "unit": "unit", "reason": "Distribusi ke cabang" },
+      "expected": "Transaksi butuh approval 2 tingkat (pending -> pending_level2 -> approved), stok baru berkurang setelah full approved"
+    },
+    {
+      "id": "SOUT-04",
+      "type": "bad",
+      "name": "Stock Out dengan FEFO — pilih batch yang sudah expired",
+      "input": { "itemId": 5, "warehouseId": 1, "qty": 5, "batchSelection": "expired" },
+      "expected": "Sistem menolak atau warning batch expired tidak boleh dikeluarkan (tergantung implementasi FEFO enforcement)"
+    },
+    {
+      "id": "SOUT-05",
+      "type": "edge",
+      "name": "Stock Out oleh Warehouse Staff yang warehouseId-nya beda dari warehouse transaksi",
+      "input": { "loginAs": "alice@example.com", "attemptWarehouseId": 2, "itemId": 2, "qty": 5 },
+      "expected": "Ditolak di level form — dropdown warehouse tidak menampilkan gudang selain miliknya (warehouseId=1)"
+    }
+  ]
+}

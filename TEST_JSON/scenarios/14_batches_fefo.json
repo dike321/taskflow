@@ -1,0 +1,40 @@
+{
+  "feature": "Batches & FEFO (First-Expired-First-Out)",
+  "scenarios": [
+    {
+      "id": "BATCH-01",
+      "type": "good",
+      "name": "Create batch baru saat Stock In item dengan tracking batch",
+      "input": { "itemId": 5, "warehouseId": 1, "batchNo": "BTC-20260921-01", "qty": 50, "expiryDate": "2027-03-01" },
+      "expected": "Batch baru tercatat di Batches page dengan expiryDate, terhubung ke item Tinta Printer Hitam"
+    },
+    {
+      "id": "BATCH-02",
+      "type": "bad",
+      "name": "Create batch dengan nomor batch duplikat untuk item yang sama",
+      "input": { "itemId": 5, "warehouseId": 1, "batchNo": "BTC-20260921-01", "qty": 20 },
+      "expected": "Ditolak — error 'Nomor batch sudah digunakan untuk item ini'"
+    },
+    {
+      "id": "BATCH-03",
+      "type": "good",
+      "name": "Filter Batches by status Expiring Soon",
+      "input": { "filterStatus": "expiring_soon" },
+      "expected": "Hanya batch dengan expiryDate dalam N hari ke depan yang tampil, dengan badge warning"
+    },
+    {
+      "id": "BATCH-04",
+      "type": "edge",
+      "name": "Stock Out menggunakan FEFO otomatis pilih batch expiry paling dekat",
+      "input": { "itemId": 5, "warehouseId": 1, "qty": 10, "batchSelection": "auto_fefo" },
+      "expected": "Sistem otomatis mengurangi qty dari batch dengan expiryDate paling awal terlebih dahulu"
+    },
+    {
+      "id": "BATCH-05",
+      "type": "bad",
+      "name": "Batch sudah expired tapi masih ada sisa qty — cek visibility di Stock Out",
+      "input": { "itemId": 5, "warehouseId": 1, "batchExpiryDate": "2026-01-01" },
+      "expected": "Batch expired ditandai jelas (badge merah 'Expired') dan tidak bisa dipilih manual untuk Stock Out baru"
+    }
+  ]
+}

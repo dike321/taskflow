@@ -1,0 +1,48 @@
+{
+  "_description": "Data referensi live (mock data) TaskFlow per 2026-09-21, dipakai sebagai sumber nilai dropdown/FK untuk skenario CRUD di TEST_JSON/scenarios/*.json. Bukan data yang di-seed ke app (tidak ada backend) — cuma dokumentasi state mock data saat ini supaya skenario test bisa dirujuk konsisten.",
+  "roles": [
+    { "id": 1, "name": "Admin", "approvalLevel": 2 },
+    { "id": 2, "name": "Warehouse Staff", "approvalLevel": null },
+    { "id": 3, "name": "Warehouse Supervisor", "approvalLevel": 1 },
+    { "id": 4, "name": "Supplier", "approvalLevel": null }
+  ],
+  "companies": [
+    { "id": 1, "name": "PT Sinergi Logistik Nusantara", "type": "internal", "supplierId": null },
+    { "id": 2, "name": "PT Alat Tulis Sejahtera", "type": "supplier", "supplierId": 1 },
+    { "id": 3, "name": "CV Elektronik Jaya Abadi", "type": "supplier", "supplierId": 2 }
+  ],
+  "warehouses": [
+    { "id": 1, "code": "WH-JKT", "name": "Gudang Pusat Jakarta" },
+    { "id": 2, "code": "WH-SBY", "name": "Gudang Cabang Surabaya" },
+    { "id": 3, "code": "WH-BDG", "name": "Gudang Cabang Bandung" }
+  ],
+  "suppliers": [
+    { "id": 1, "name": "PT Alat Tulis Sejahtera", "status": "active" },
+    { "id": 2, "name": "CV Elektronik Jaya Abadi", "status": "active" },
+    { "id": 3, "name": "PT Consumable Nusantara", "status": "inactive" }
+  ],
+  "users": [
+    { "id": 1, "name": "John Doe", "email": "john@example.com", "roleId": 1, "roleName": "Admin", "companyId": 1, "warehouseId": null, "status": "active" },
+    { "id": 2, "name": "Jane Smith", "email": "jane@example.com", "roleId": 3, "roleName": "Warehouse Supervisor", "companyId": 1, "warehouseId": null, "status": "active" },
+    { "id": 3, "name": "Bob Johnson", "email": "bob@example.com", "roleId": 2, "roleName": "Warehouse Staff", "companyId": 1, "warehouseId": 2, "status": "inactive" },
+    { "id": 4, "name": "Alice Brown", "email": "alice@example.com", "roleId": 2, "roleName": "Warehouse Staff", "companyId": 1, "warehouseId": 1, "status": "active" },
+    { "id": 5, "name": "Charlie Wilson", "email": "charlie@example.com", "roleId": 3, "roleName": "Warehouse Supervisor", "companyId": 1, "warehouseId": null, "status": "active" },
+    { "id": 6, "name": "Budi Santoso", "email": "budi@alattulisejahtera.co.id", "roleId": 4, "roleName": "Supplier", "companyId": 2, "warehouseId": null, "status": "active" }
+  ],
+  "items": [
+    { "id": 1, "sku": "ATK-001", "name": "Kertas A4 80gsm", "category": "ATK", "unit": "rim", "minStock": 50, "purchaseUnit": "karton", "purchaseConversionFactor": 5, "barcode": "8991000000013" },
+    { "id": 2, "sku": "ATK-002", "name": "Pulpen Hitam", "category": "ATK", "unit": "pcs", "minStock": 100, "purchaseUnit": "box", "purchaseConversionFactor": 12, "barcode": "8991000000020" },
+    { "id": 3, "sku": "ELK-001", "name": "Laptop Dell Latitude", "category": "Elektronik", "unit": "unit", "minStock": 5, "barcode": "8991000000037" },
+    { "id": 4, "sku": "ELK-002", "name": "Monitor LED 24\"", "category": "Elektronik", "unit": "unit", "minStock": 5, "barcode": "8991000000044" },
+    { "id": 5, "sku": "CON-001", "name": "Tinta Printer Hitam", "category": "Consumable", "unit": "botol", "minStock": 20, "purchaseUnit": "box", "purchaseConversionFactor": 6, "barcode": "8991000000051" },
+    { "id": 6, "sku": "CON-002", "name": "Hand Sanitizer 500ml", "category": "Consumable", "unit": "botol", "minStock": 30, "purchaseUnit": "box", "purchaseConversionFactor": 12, "barcode": "8991000000068" }
+  ],
+  "categories": ["ATK", "Elektronik", "Consumable"],
+  "units": ["pcs", "unit", "box", "karton", "rim", "botol", "kg"],
+  "departments": ["Management", "Warehouse", "Finance", "IT", "Operations", "Vendor"],
+  "ticketCategories": ["IT", "Finance", "Operations", "HR", "Facilities"],
+  "ticketPriorities": ["low", "medium", "high", "urgent"],
+  "ticketStatuses": ["open", "in_progress", "resolved", "closed"],
+  "approvalSettingsDefault": { "approvalThreshold": 100, "escalationThreshold": 500 },
+  "loginNote": "Password diabaikan (min 6 char format-only, tidak ada credential store nyata). Login pakai email yang match ke users[].email + status 'active'."
+}

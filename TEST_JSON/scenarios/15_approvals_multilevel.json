@@ -1,0 +1,40 @@
+{
+  "feature": "Multi-Level Approval Workflow (Maker-Checker)",
+  "scenarios": [
+    {
+      "id": "APR-01",
+      "type": "good",
+      "name": "Level 1 approver approve transaksi pending — maju ke pending_level2",
+      "input": { "loginAs": "jane@example.com", "targetTransactionStatus": "pending", "action": "approve" },
+      "expected": "Status berubah jadi 'pending_level2', menunggu approver level 2 (role approvalLevel=2)"
+    },
+    {
+      "id": "APR-02",
+      "type": "bad",
+      "name": "Maker mencoba approve transaksi buatannya sendiri (self-approval)",
+      "input": { "loginAs": "alice@example.com", "targetTransactionCreatedBy": "alice@example.com", "action": "approve" },
+      "expected": "Ditolak — 'Tidak bisa approve transaksi yang dibuat sendiri' (maker-checker enforcement)"
+    },
+    {
+      "id": "APR-03",
+      "type": "good",
+      "name": "Level 2 approver (Admin) final-approve transaksi pending_level2",
+      "input": { "loginAs": "john@example.com", "targetTransactionStatus": "pending_level2", "action": "approve" },
+      "expected": "Status jadi 'approved', stok akhirnya benar-benar bertambah/berkurang sesuai jenis transaksi"
+    },
+    {
+      "id": "APR-04",
+      "type": "bad",
+      "name": "Approver level 1 mencoba approve transaksi yang sudah di pending_level2",
+      "input": { "loginAs": "jane@example.com", "targetTransactionStatus": "pending_level2", "action": "approve" },
+      "expected": "Ditolak/tombol tidak tersedia — approvalLevel 1 tidak berwenang approve stage level 2 (canApproveAtLevel check)"
+    },
+    {
+      "id": "APR-05",
+      "type": "good",
+      "name": "Reject transaksi di level manapun menghentikan alur",
+      "input": { "loginAs": "jane@example.com", "targetTransactionStatus": "pending", "action": "reject", "reason": "Data tidak lengkap" },
+      "expected": "Status jadi 'rejected', stok tidak berubah, alasan reject tercatat dan terlihat oleh maker"
+    }
+  ]
+}

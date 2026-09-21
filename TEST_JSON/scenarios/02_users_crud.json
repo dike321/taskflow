@@ -1,0 +1,49 @@
+{
+  "feature": "Users CRUD",
+  "scenarios": [
+    {
+      "id": "USER-01",
+      "type": "good",
+      "name": "Create user baru lengkap & valid",
+      "input": {
+        "name": "Dewi Kartika",
+        "email": "dewi@example.com",
+        "phone": "+6281777888999",
+        "department": "IT",
+        "companyId": 1,
+        "roleId": 3,
+        "status": "active",
+        "warehouseId": null
+      },
+      "expected": "User baru masuk tabel, tercatat di Activity Log module Users action CREATE"
+    },
+    {
+      "id": "USER-02",
+      "type": "bad",
+      "name": "Create user tanpa Name/Email/Phone (required)",
+      "input": { "name": "", "email": "", "phone": "" },
+      "expected": "Browser native validation menahan submit (HTML required), form tidak ter-submit"
+    },
+    {
+      "id": "USER-03",
+      "type": "edge",
+      "name": "Edit user existing — ganti role & assign warehouse",
+      "input": { "targetUserId": 5, "roleId": 2, "warehouseId": 3 },
+      "expected": "Charlie Wilson jadi Warehouse Staff, terkunci ke Gudang Cabang Bandung; badge role & kolom Warehouse di tabel berubah"
+    },
+    {
+      "id": "USER-04",
+      "type": "edge",
+      "name": "Filter tabel Users by Role & Status kombinasi",
+      "input": { "roleFilter": 2, "statusFilter": "active" },
+      "expected": "Cuma tampil Warehouse Staff yang aktif (Alice Brown, dst — Bob Johnson tidak muncul karena inactive)"
+    },
+    {
+      "id": "USER-05",
+      "type": "bad",
+      "name": "Delete user yang masih dipakai sebagai approver historis",
+      "input": { "targetUserId": 2 },
+      "note": "Users.tsx tidak punya guard 'masih dipakai' seperti Roles/Companies/Suppliers — cek apakah delete tetap jalan tanpa validasi referential integrity (gap yang perlu dicatat, bukan sekadar lolos/gagal)"
+    }
+  ]
+}

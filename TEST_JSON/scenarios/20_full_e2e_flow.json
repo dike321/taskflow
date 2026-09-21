@@ -1,0 +1,33 @@
+{
+  "feature": "Full End-to-End Flow (Login -> Setup -> Transaksi -> Approval -> Laporan)",
+  "description": "Satu alur panjang yang merangkai banyak modul secara berurutan, mensimulasikan siklus hidup penuh: dari login admin, setup master data, alur transaksi stok dengan approval berjenjang, sampai supplier mengkonfirmasi pengiriman dan laporan akhir mencerminkan semuanya.",
+  "scenario": {
+    "id": "E2E-FULL-01",
+    "type": "good",
+    "name": "Siklus penuh: Admin setup -> Staff transaksi -> Supervisor approve L1 -> Admin approve L2 -> Supplier confirm shipment -> Report reflects final state",
+    "steps": [
+      { "step": 1, "action": "login", "as": "john@example.com", "expected": "Masuk sebagai Admin, dashboard tampil" },
+      { "step": 2, "action": "create_item", "data": { "sku": "E2E-001", "name": "Item Uji E2E", "category": "ATK", "unit": "pcs", "minStock": 10 }, "expected": "Item baru tersedia untuk transaksi" },
+      { "step": 3, "action": "create_ticket", "data": { "title": "Permintaan restock Item Uji E2E", "category": "Operations", "priority": "medium" }, "expected": "Ticket tercatat status open" },
+      { "step": 4, "action": "logout", "expected": "Kembali ke /login" },
+      { "step": 5, "action": "login", "as": "alice@example.com", "expected": "Masuk sebagai Warehouse Staff, terkunci ke WH-JKT" },
+      { "step": 6, "action": "create_stock_in", "data": { "itemSku": "E2E-001", "warehouseId": 1, "qty": 500, "unit": "pcs" }, "expected": "Nilai besar -> transaksi masuk status pending (di atas approvalThreshold)" },
+      { "step": 7, "action": "logout", "expected": "Kembali ke /login" },
+      { "step": 8, "action": "login", "as": "jane@example.com", "expected": "Masuk sebagai Warehouse Supervisor (approvalLevel 1)" },
+      { "step": 9, "action": "approve_transaction", "data": { "fromStep": 6 }, "expected": "Status transaksi jadi pending_level2 (butuh approval final)" },
+      { "step": 10, "action": "logout", "expected": "Kembali ke /login" },
+      { "step": 11, "action": "login", "as": "john@example.com", "expected": "Masuk sebagai Admin (approvalLevel 2)" },
+      { "step": 12, "action": "approve_transaction", "data": { "fromStep": 6 }, "expected": "Status jadi approved, stok Item Uji E2E di WH-JKT bertambah 500 pcs" },
+      { "step": 13, "action": "resolve_ticket", "data": { "fromStep": 3 }, "expected": "Ticket status berubah open -> in_progress -> resolved karena restock sudah selesai" },
+      { "step": 14, "action": "logout", "expected": "Kembali ke /login" },
+      { "step": 15, "action": "login", "as": "budi@alattulisejahtera.co.id", "expected": "Masuk sebagai Supplier, hanya lihat data company sendiri" },
+      { "step": 16, "action": "confirm_shipment", "data": { "note": "Shipment terkait pengadaan terpisah" }, "expected": "Shipment milik supplier ini berubah status confirmed (jika ada PO aktif untuk company-nya)" },
+      { "step": 17, "action": "logout", "expected": "Kembali ke /login" },
+      { "step": 18, "action": "login", "as": "john@example.com", "expected": "Masuk sebagai Admin" },
+      { "step": 19, "action": "check_inventory_report", "data": { "itemSku": "E2E-001", "warehouseId": 1 }, "expected": "Report stok menunjukkan qty 500 pcs untuk Item Uji E2E di WH-JKT, histori mutasi mencatat transaksi step 6 dengan status approved" },
+      { "step": 20, "action": "check_activity_log", "expected": "Log mencatat seluruh rangkaian aksi: create item, create ticket, create stock-in, approve L1, approve L2, resolve ticket, confirm shipment — masing-masing dengan actor & timestamp yang sesuai urutan login di atas" },
+      { "step": 21, "action": "check_ticket_report", "expected": "Ticket 'Permintaan restock Item Uji E2E' berstatus resolved di Ticket Report" }
+    ],
+    "overallExpected": "Seluruh siklus berjalan konsisten lintas modul (Items, Tickets, Stock In, Approvals berjenjang, Supplier Portal, Reports, Activity Log) tanpa kebocoran data antar role/warehouse/company, dan state akhir di semua halaman saling konsisten satu sama lain."
+  }
+}

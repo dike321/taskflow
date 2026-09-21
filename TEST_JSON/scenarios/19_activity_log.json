@@ -1,0 +1,40 @@
+{
+  "feature": "Activity Log (Audit Trail)",
+  "scenarios": [
+    {
+      "id": "LOG-01",
+      "type": "good",
+      "name": "Setiap aksi CRUD tercatat di Activity Log dengan actor & timestamp",
+      "input": { "action": "create_user_then_check_log" },
+      "expected": "Entry baru di Activity Log: module='Users', action='CREATE', actor=nama user yang login, timestamp akurat"
+    },
+    {
+      "id": "LOG-02",
+      "type": "good",
+      "name": "Filter Activity Log by module",
+      "input": { "filterModule": "Tickets" },
+      "expected": "Hanya log dari module Tickets yang tampil"
+    },
+    {
+      "id": "LOG-03",
+      "type": "edge",
+      "name": "Filter Activity Log by rentang tanggal tanpa aktivitas",
+      "input": { "dateFrom": "2020-01-01", "dateTo": "2020-01-02" },
+      "expected": "List kosong, pesan 'Tidak ada aktivitas' bukan error"
+    },
+    {
+      "id": "LOG-04",
+      "type": "bad",
+      "name": "User non-Admin coba akses Activity Log",
+      "input": { "loginAs": "alice@example.com", "attemptUrl": "/activity-log" },
+      "expected": "Menu tidak tersedia di sidebar untuk role tanpa permission; akses URL langsung ditolak/redirect"
+    },
+    {
+      "id": "LOG-05",
+      "type": "good",
+      "name": "Aksi approve/reject transaksi tercatat di log dengan detail before/after status",
+      "input": { "action": "approve_transaction_then_check_log" },
+      "expected": "Entry log menunjukkan perubahan status (mis. pending -> approved) beserta approver"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "feature": "Suppliers CRUD",
+  "scenarios": [
+    {
+      "id": "SUPP-01",
+      "type": "good",
+      "name": "Create supplier baru dengan status active",
+      "input": { "name": "PT Karya Mandiri Sejahtera", "status": "active", "contactEmail": "cs@karyamandiri.co.id" },
+      "expected": "Supplier baru masuk tabel, muncul di dropdown Supplier saat create Company type supplier"
+    },
+    {
+      "id": "SUPP-02",
+      "type": "bad",
+      "name": "Create supplier tanpa nama",
+      "input": { "name": "" },
+      "expected": "Validasi menahan submit, error 'Nama supplier wajib diisi'"
+    },
+    {
+      "id": "SUPP-03",
+      "type": "edge",
+      "name": "Nonaktifkan supplier (status active -> inactive)",
+      "input": { "targetSupplierId": 1, "status": "inactive" },
+      "expected": "Badge status berubah jadi inactive; supplier tetap muncul di histori tapi tidak dipakai di transaksi baru"
+    },
+    {
+      "id": "SUPP-04",
+      "type": "bad",
+      "name": "Delete supplier yang masih dipakai Company",
+      "input": { "targetSupplierId": 1 },
+      "expected": "Ditolak — warning 'Supplier masih digunakan oleh Company, tidak bisa dihapus' (guard isSupplierInUse)"
+    },
+    {
+      "id": "SUPP-05",
+      "type": "good",
+      "name": "Delete supplier yang tidak dipakai company manapun",
+      "input": { "targetSupplierId": 3 },
+      "expected": "Supplier CV Consumable Nusantara (inactive, tidak terhubung company manapun) berhasil terhapus dari tabel"
+    }
+  ]
+}

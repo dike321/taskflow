@@ -1,0 +1,40 @@
+{
+  "feature": "Supplier Portal (Scoped View + Confirm Shipment)",
+  "scenarios": [
+    {
+      "id": "SUPP-PORTAL-01",
+      "type": "good",
+      "name": "Supplier user login dan hanya lihat data terkait company/supplier-nya sendiri",
+      "input": { "loginAs": "budi@alattulisejahtera.co.id" },
+      "expected": "Supplier Portal hanya menampilkan PO/shipment terkait PT Alat Tulis Sejahtera (companyId=2), tidak ada data supplier lain (CV Elektronik Jaya Abadi) yang bocor"
+    },
+    {
+      "id": "SUPP-PORTAL-02",
+      "type": "good",
+      "name": "Supplier confirm shipment untuk PO miliknya",
+      "input": { "loginAs": "budi@alattulisejahtera.co.id", "action": "confirm_shipment", "targetPoBelongsToSelf": true },
+      "expected": "Status shipment berubah jadi 'confirmed', tercatat timestamp konfirmasi, notifikasi terkirim ke internal warehouse"
+    },
+    {
+      "id": "SUPP-PORTAL-03",
+      "type": "bad",
+      "name": "Supplier coba akses menu/route internal (Users, Roles, Inventory penuh)",
+      "input": { "loginAs": "budi@alattulisejahtera.co.id", "attemptUrl": "/users" },
+      "expected": "Ditolak — sidebar tidak menampilkan menu tsb, dan akses langsung via URL di-redirect/blocked oleh permission guard"
+    },
+    {
+      "id": "SUPP-PORTAL-04",
+      "type": "bad",
+      "name": "Supplier coba confirm shipment milik supplier lain (manipulasi data)",
+      "input": { "loginAs": "budi@alattulisejahtera.co.id", "action": "confirm_shipment", "targetPoBelongsToSelf": false },
+      "expected": "Ditolak — sistem tidak menampilkan PO supplier lain sama sekali, tidak ada jalur untuk confirm shipment yang bukan miliknya"
+    },
+    {
+      "id": "SUPP-PORTAL-05",
+      "type": "edge",
+      "name": "Admin internal melihat semua shipment dari semua supplier (kontras dengan scoped Supplier view)",
+      "input": { "loginAs": "john@example.com", "checkPage": "/inventory/stock-history" },
+      "expected": "Admin bisa lihat histori stock in dari semua supplier/company, membuktikan scoping hanya berlaku untuk role Supplier"
+    }
+  ]
+}

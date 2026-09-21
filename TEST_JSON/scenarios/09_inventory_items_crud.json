@@ -1,0 +1,49 @@
+{
+  "feature": "Inventory Items CRUD",
+  "scenarios": [
+    {
+      "id": "ITEM-01",
+      "type": "good",
+      "name": "Create item baru lengkap dengan purchase unit conversion",
+      "input": {
+        "sku": "ATK-003",
+        "name": "Stapler Besar",
+        "category": "ATK",
+        "unit": "pcs",
+        "minStock": 20,
+        "purchaseUnit": "box",
+        "purchaseConversionFactor": 10,
+        "barcode": "8991000000075"
+      },
+      "expected": "Item baru masuk tabel Items, muncul di dropdown Item saat Stock In/Out"
+    },
+    {
+      "id": "ITEM-02",
+      "type": "bad",
+      "name": "Create item dengan SKU duplikat",
+      "input": { "sku": "ATK-001", "name": "Kertas A4 Duplikat" },
+      "expected": "Ditolak — error 'SKU sudah digunakan', SKU harus unik"
+    },
+    {
+      "id": "ITEM-03",
+      "type": "bad",
+      "name": "Create item dengan minStock negatif",
+      "input": { "sku": "ATK-004", "name": "Item Invalid", "minStock": -5 },
+      "expected": "Validasi menahan submit, minStock harus >= 0"
+    },
+    {
+      "id": "ITEM-04",
+      "type": "edge",
+      "name": "Edit item — ubah purchaseConversionFactor mempengaruhi kalkulasi Stock In",
+      "input": { "targetItemId": 1, "purchaseConversionFactor": 10 },
+      "expected": "Stock In berikutnya untuk item ini menghitung qty base unit = qty purchase unit x 10 (bukan lagi x5)"
+    },
+    {
+      "id": "ITEM-05",
+      "type": "good",
+      "name": "Search item by barcode",
+      "input": { "searchBarcode": "8991000000013" },
+      "expected": "Tabel Items ter-filter menampilkan hanya Kertas A4 80gsm (ATK-001)"
+    }
+  ]
+}

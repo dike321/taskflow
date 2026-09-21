@@ -1,0 +1,40 @@
+{
+  "feature": "Companies CRUD (multi-company)",
+  "scenarios": [
+    {
+      "id": "COMP-01",
+      "type": "good",
+      "name": "Create company internal baru",
+      "input": { "name": "PT Mitra Gudang Sejahtera", "type": "internal", "supplierId": null },
+      "expected": "Company baru masuk tabel, muncul di dropdown Company saat create User"
+    },
+    {
+      "id": "COMP-02",
+      "type": "bad",
+      "name": "Create company type supplier tanpa link ke Supplier",
+      "input": { "name": "PT Tanpa Supplier Link", "type": "supplier", "supplierId": null },
+      "expected": "Validasi menahan submit, error 'Supplier wajib dipilih untuk company type supplier'"
+    },
+    {
+      "id": "COMP-03",
+      "type": "edge",
+      "name": "Edit company existing — ganti nama",
+      "input": { "targetCompanyId": 1, "name": "PT Sinergi Logistik Nusantara Group" },
+      "expected": "Nama company berubah di tabel dan di seluruh referensi (User profile, dsb)"
+    },
+    {
+      "id": "COMP-04",
+      "type": "bad",
+      "name": "Delete company yang masih dipakai user",
+      "input": { "targetCompanyId": 1 },
+      "expected": "Ditolak — warning 'Company masih digunakan oleh N user, tidak bisa dihapus' (guard isCompanyInUse)"
+    },
+    {
+      "id": "COMP-05",
+      "type": "good",
+      "name": "Create company supplier terhubung ke Supplier existing",
+      "input": { "name": "PT Consumable Nusantara Corp", "type": "supplier", "supplierId": 3 },
+      "expected": "Company tersimpan dengan link supplierId=3, siap dipakai saat create Supplier user baru untuk perusahaan ini"
+    }
+  ]
+}
