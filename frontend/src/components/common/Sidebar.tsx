@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
-import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, TrendingUp, Settings, ChevronDown, LogOut, Ticket } from './Icons'
+import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, TrendingUp, Settings, ChevronDown, LogOut, Ticket, Building2 } from './Icons'
 import { useSession } from '../../data/session'
 import { hasModuleAccess, hasPermission } from '../../utils/permissions'
 
@@ -28,6 +28,7 @@ const menuItems: MenuItem[] = [
   { path: '/approvals', icon: ClipboardCheck, label: 'Approvals', modules: ['approvals'] },
   { path: '/warehouses', icon: Warehouse, label: 'Warehouses', modules: ['warehouses'] },
   { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
+  { path: '/companies', icon: Building2, label: 'Companies', modules: ['companies'] },
   { path: '/tickets', icon: Ticket, label: 'Tickets', modules: ['tickets'] },
   { path: '/activity-log', icon: History, label: 'Activity Log', modules: ['activityLog'] },
   { path: '/reports', icon: TrendingUp, label: 'Reports', modules: ['reports'] },

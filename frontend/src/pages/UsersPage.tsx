@@ -17,6 +17,7 @@ import type { Role } from '../data/roles'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
 import { useWarehouses } from '../data/warehouses'
+import { useCompanies } from '../data/companies'
 
 const badgeVariants: Array<'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info'> = [
   'primary',
@@ -34,6 +35,7 @@ export default function UsersPage() {
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
   const { warehouses } = useWarehouses()
+  const { companies } = useCompanies()
   const [users, setUsers] = useState<User[]>(mockUsers)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -44,6 +46,7 @@ export default function UsersPage() {
     email: '',
     phone: '',
     department: DEPARTMENTS[0],
+    companyId: companies[0]?.id ?? 0,
     roleId: mockRoles[0]?.id ?? 0,
     status: 'active',
     warehouseId: 0,
@@ -80,6 +83,7 @@ export default function UsersPage() {
       email: user.email,
       phone: user.phone,
       department: user.department,
+      companyId: user.companyId,
       roleId: user.roleId,
       status: user.status,
       warehouseId: user.warehouseId ?? 0,
@@ -112,6 +116,7 @@ export default function UsersPage() {
       email: '',
       phone: '',
       department: DEPARTMENTS[0],
+      companyId: companies[0]?.id ?? 0,
       roleId: mockRoles[0]?.id ?? 0,
       status: 'active',
       warehouseId: 0,
@@ -165,6 +170,11 @@ export default function UsersPage() {
     { key: 'email', header: 'Email' },
     { key: 'phone', header: 'Phone' },
     { key: 'department', header: 'Department' },
+    {
+      key: 'company',
+      header: 'Company',
+      render: (user: User) => companies.find((c) => c.id === user.companyId)?.name ?? 'Unknown',
+    },
     {
       key: 'warehouse',
       header: 'Warehouse',
@@ -306,6 +316,18 @@ export default function UsersPage() {
             {DEPARTMENTS.map((department) => (
               <option key={department} value={department}>
                 {department}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Company"
+            value={formData.companyId}
+            onChange={(e) => setFormData({ ...formData, companyId: Number(e.target.value) })}
+            required
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
               </option>
             ))}
           </Select>

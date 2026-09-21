@@ -7,6 +7,7 @@ import { ActivityLogProvider } from '../../data/activityLog'
 import { InventoryDataProvider } from '../../data/inventory'
 import { SuppliersProvider } from '../../data/suppliers'
 import { WarehousesProvider } from '../../data/warehouses'
+import { CompaniesProvider } from '../../data/companies'
 import { TicketsProvider } from '../../data/tickets'
 import { ApprovalSettingsProvider, NotificationPreferencesProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
@@ -20,6 +21,7 @@ import BatchesPage from '../../pages/inventory/BatchesPage'
 import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
+import CompaniesPage from '../../pages/CompaniesPage'
 import ApprovalsPage from '../../pages/ApprovalsPage'
 import TicketsPage from '../../pages/TicketsPage'
 import ActivityLogPage from '../../pages/ActivityLogPage'
@@ -43,19 +45,21 @@ function AppRouter() {
             element={
               <ActivityLogProvider>
                 <InventoryDataProvider>
-                  <SuppliersProvider>
-                    <WarehousesProvider>
-                      <TicketsProvider>
-                        <ApprovalSettingsProvider>
-                          <NotificationPreferencesProvider>
-                            <RequireAuth>
-                              <MainLayout />
-                            </RequireAuth>
-                          </NotificationPreferencesProvider>
-                        </ApprovalSettingsProvider>
-                      </TicketsProvider>
-                    </WarehousesProvider>
-                  </SuppliersProvider>
+                  <CompaniesProvider>
+                    <SuppliersProvider>
+                      <WarehousesProvider>
+                        <TicketsProvider>
+                          <ApprovalSettingsProvider>
+                            <NotificationPreferencesProvider>
+                              <RequireAuth>
+                                <MainLayout />
+                              </RequireAuth>
+                            </NotificationPreferencesProvider>
+                          </ApprovalSettingsProvider>
+                        </TicketsProvider>
+                      </WarehousesProvider>
+                    </SuppliersProvider>
+                  </CompaniesProvider>
                 </InventoryDataProvider>
               </ActivityLogProvider>
             }
@@ -76,6 +80,7 @@ function AppRouter() {
             <Route path="tickets" element={<TicketsPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="warehouses" element={<WarehousesPage />} />
+            <Route path="companies" element={<CompaniesPage />} />
             <Route path="activity-log" element={<ActivityLogPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<SettingsLayout />}>

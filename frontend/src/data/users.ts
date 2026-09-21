@@ -4,6 +4,8 @@ export interface User {
   email: string
   phone: string
   department: string
+  /** Company.id di data/companies.tsx — wajib diisi, "organisasi induk" user ini (internal atau supplier). */
+  companyId: number
   roleId: number
   status: 'active' | 'inactive'
   createdAt: string
@@ -20,6 +22,7 @@ export const mockUsers: User[] = [
     email: 'john@example.com',
     phone: '+6281234567890',
     department: 'Management',
+    companyId: 1,
     roleId: 1,
     status: 'active',
     createdAt: '2024-01-15',
@@ -30,6 +33,7 @@ export const mockUsers: User[] = [
     email: 'jane@example.com',
     phone: '+6281323456789',
     department: 'Warehouse',
+    companyId: 1,
     roleId: 3,
     status: 'active',
     createdAt: '2024-01-20',
@@ -40,6 +44,7 @@ export const mockUsers: User[] = [
     email: 'bob@example.com',
     phone: '+6281434567891',
     department: 'Warehouse',
+    companyId: 1,
     roleId: 2,
     status: 'inactive',
     createdAt: '2024-02-01',
@@ -51,6 +56,7 @@ export const mockUsers: User[] = [
     email: 'alice@example.com',
     phone: '+6281545678912',
     department: 'Finance',
+    companyId: 1,
     roleId: 2,
     status: 'active',
     createdAt: '2024-02-10',
@@ -62,6 +68,7 @@ export const mockUsers: User[] = [
     email: 'charlie@example.com',
     phone: '+6281656789123',
     department: 'Warehouse',
+    companyId: 1,
     roleId: 3,
     status: 'active',
     createdAt: '2024-02-15',

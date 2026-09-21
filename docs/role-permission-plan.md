@@ -50,6 +50,7 @@ Daftar aktual di `data/roles.ts` (`MODULES`), bertambah seiring modul baru diban
 | `inventory.batches` | Inventory → tab Batches | view |
 | `suppliers` | Suppliers (menu top-level sendiri) | view, create, edit, delete |
 | `warehouses` | Warehouses | view, create, edit, delete |
+| `companies` | Companies (menu top-level sendiri) | view, create, edit, delete |
 | `tickets` | Tickets | view, create, edit, delete |
 | `settings` | Settings | view, edit |
 | `activityLog` | Activity Log | view |
@@ -105,10 +106,12 @@ export interface User {
   name: string
   email: string
   phone: string
-  department: string  // ditambahkan belakangan untuk cost tracking, lihat docs/inventory-module-plan.md
-  roleId: number       // sebelumnya: role: string
+  department: string    // ditambahkan belakangan untuk cost tracking, lihat docs/inventory-module-plan.md
+  companyId: number      // wajib — lihat "Company" di bawah, sesuai flow.md poin 5
+  roleId: number         // sebelumnya: role: string
   status: 'active' | 'inactive'
   createdAt: string
+  warehouseId?: number   // opsional — lihat docs/inventory-module-plan.md roadmap #1
 }
 ```
 
@@ -116,6 +119,15 @@ export interface User {
 - Badge warna role sekarang digenerate otomatis dari palet tetap berdasarkan `roleId` (bukan mapping hardcode per nama role) — otomatis menyesuaikan berapa pun jumlah role yang dibuat lewat Role Management.
 - `<Select>` daftar role di form Add/Edit dan filter, sekarang di-generate dari `mockRoles` (bukan hardcode `Admin`/`Manager`/`User` lagi).
 - Kolom "Role" di tabel menampilkan `role.name` hasil lookup dari `roleId`.
+
+### Company — `data/companies.tsx`, `pages/CompaniesPage.tsx` [Selesai]
+
+Menjawab `flow.md` poin 5 ("setiap user wajib memiliki companynya masing-masing"). Percobaan pertama field ini (langsung nambah `companyId` ke `User` tanpa entity/form di baliknya) sempat di-revert karena bikin `UsersPage.tsx` gagal type-check — kali ini dibangun lengkap:
+
+- **`Company { id, name, type: 'internal' | 'supplier', address, phone, email, status }`** — entity master data baru, terpisah dari `Supplier`/`Warehouse` yang sudah ada (bukan reuse) sesuai keputusan scope. `type` cuma pembeda tampilan (badge) — organisasi sendiri (`internal`) vs perusahaan vendor eksternal (`supplier`), tidak ada logika lain yang bergantung padanya.
+- **Halaman `CompaniesPage.tsx`** — menu top-level sendiri (sejajar Suppliers/Warehouses), pola CRUD identik `SuppliersPage.tsx`: Table + Modal Add/Edit + Modal delete dengan guard "masih dipakai" (cek `mockUsers.some(u => u.companyId === id)`).
+- **`User.companyId: number`** — **wajib**, bukan optional (sesuai kata "wajib" di flow.md). Form Add/Edit User dapat `<Select>` Company baru (required), default ke company pertama. Kelima mock user di-assign ke company internal (id 1) supaya tidak ada data yang invalid.
+- **Scope yang sengaja tidak dikerjakan** (sesuai keputusan): `companyId` cuma field pencatatan, **tidak** membatasi akses data — beda dari `warehouseId` yang membatasi pilihan warehouse di form transaksi. Kalau nanti dibutuhkan multi-tenant sungguhan (user company A tidak bisa lihat data company B), itu perubahan permission model yang jauh lebih besar, di luar scope ini.
 
 ---
 
