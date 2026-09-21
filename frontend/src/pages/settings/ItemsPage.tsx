@@ -57,7 +57,7 @@ export default function ItemsPage() {
     const name = nameQuery.trim().toLowerCase()
 
     return items.filter((item) => {
-      const stock = totalStock(item.id)
+      const stock = getStockQuantity(warehouseStock, item.id)
       const matchesSku = !sku || item.sku.toLowerCase().includes(sku)
       const matchesName = !name || item.name.toLowerCase().includes(name)
       const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter

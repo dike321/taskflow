@@ -19,4 +19,14 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // src/data/*.tsx files deliberately colocate types, mock data, a Context, a
+    // useXxx() hook and the XxxProvider component per domain. This trades away
+    // Fast Refresh's state-preserving reload for that file (a DX nicety, not a
+    // runtime concern) in exchange for one file per domain instead of two.
+    files: ['src/data/**/*.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

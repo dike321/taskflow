@@ -38,7 +38,7 @@ function Table<T>({ columns, data, emptyMessage = 'No data available' }: TablePr
           {data.map((item, index) => (
             <tr key={index}>
               {columns.map((column) => (
-                <td key={column.key}>{column.render ? column.render(item) : (item as any)[column.key]}</td>
+                <td key={column.key}>{column.render ? column.render(item) : (item as Record<string, ReactNode>)[column.key]}</td>
               ))}
             </tr>
           ))}

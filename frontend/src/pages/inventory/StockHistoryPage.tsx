@@ -63,12 +63,13 @@ export default function StockHistoryPage() {
   const [dateTo, setDateTo] = useState('')
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
-  const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
   const getUserName = (userId?: number) => mockUsers.find((user) => user.id === userId)?.name ?? '-'
-  const getWarehouseName = (warehouseId?: number) =>
-    warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
 
   const rows = useMemo<HistoryRow[]>(() => {
+    const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
+    const getWarehouseName = (warehouseId?: number) =>
+      warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
+
     const transactionRows: HistoryRow[] = transactions.map((t) => ({
       id: `tx-${t.id}`,
       date: t.date,

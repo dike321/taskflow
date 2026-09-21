@@ -35,10 +35,10 @@ export default function Header() {
   const { preferences } = useNotificationPreferences()
   const { tickets, comments: ticketComments } = useTickets()
 
-  const getWarehouseName = (warehouseId?: number) =>
-    warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
-
   const notifications = useMemo<NotificationItem[]>(() => {
+    const getWarehouseName = (warehouseId?: number) =>
+      warehouses.find((warehouse) => warehouse.id === warehouseId)?.name ?? '-'
+
     const lowStock: NotificationItem[] =
       preferences.lowStockAlert && hasModuleAccess(currentUser, 'inventory.items')
         ? items
