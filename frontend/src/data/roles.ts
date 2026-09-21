@@ -38,6 +38,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'settings', label: 'Settings', actions: ['view', 'edit'] },
   { key: 'activityLog', label: 'Activity Log', actions: ['view'] },
   { key: 'reports', label: 'Reports', actions: ['view', 'export'] },
+  { key: 'supplierPortal', label: 'Supplier Portal', actions: ['view'] },
 ]
 
 export const ALL_ACTIONS: PermissionAction[] = ['view', 'create', 'edit', 'delete', 'approve', 'export']
@@ -66,6 +67,7 @@ export const mockRoles: Role[] = [
       settings: ['view', 'edit'],
       activityLog: ['view'],
       reports: ['view', 'export'],
+      supplierPortal: ['view'],
     },
   },
   {
@@ -106,6 +108,15 @@ export const mockRoles: Role[] = [
       companies: ['view', 'create', 'edit'],
       tickets: ['view', 'create', 'edit'],
       reports: ['view', 'export'],
+    },
+  },
+  {
+    id: 4,
+    name: 'Supplier',
+    description: 'User dari perusahaan supplier — cuma lihat profil company & riwayat pengiriman sendiri',
+    permissions: {
+      dashboard: ['view'],
+      supplierPortal: ['view'],
     },
   },
 ]

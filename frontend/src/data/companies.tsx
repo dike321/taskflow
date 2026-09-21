@@ -12,6 +12,8 @@ export interface Company {
   phone: string
   email: string
   status: 'active' | 'inactive'
+  /** Cuma relevan kalau type 'supplier' — Supplier.id di data/suppliers.tsx yang direpresentasikan company ini, dipakai untuk scoping Supplier Portal (data/tickets.tsx-style link, bukan merge entity). */
+  supplierId?: number
 }
 
 export const mockCompanies: Company[] = [
@@ -32,6 +34,7 @@ export const mockCompanies: Company[] = [
     phone: '+622155512001',
     email: 'sales@alattulisejahtera.co.id',
     status: 'active',
+    supplierId: 1,
   },
   {
     id: 3,
@@ -41,6 +44,7 @@ export const mockCompanies: Company[] = [
     phone: '+622155512002',
     email: 'order@elektronikjaya.co.id',
     status: 'active',
+    supplierId: 2,
   },
 ]
 

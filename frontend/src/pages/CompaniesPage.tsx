@@ -13,6 +13,7 @@ import { Pencil, Trash2, Plus } from '../components/common/Icons'
 import { useCompanies } from '../data/companies'
 import type { Company } from '../data/companies'
 import { mockUsers } from '../data/users'
+import { useSuppliers } from '../data/suppliers'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
 import { hasPermission } from '../utils/permissions'
@@ -24,6 +25,7 @@ const emptyFormData = {
   phone: '',
   email: '',
   status: 'active' as Company['status'],
+  supplierId: 0,
 }
 
 const typeLabel: Record<Company['type'], string> = {
@@ -37,6 +39,7 @@ const typeVariant: Record<Company['type'], 'primary' | 'info'> = {
 
 export default function CompaniesPage() {
   const { companies, setCompanies } = useCompanies()
+  const { suppliers } = useSuppliers()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
 
@@ -74,6 +77,7 @@ export default function CompaniesPage() {
       phone: company.phone,
       email: company.email,
       status: company.status,
+      supplierId: company.supplierId ?? 0,
     })
     setIsModalOpen(true)
   }
@@ -105,9 +109,13 @@ export default function CompaniesPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
 
+    const supplierId = formData.type === 'supplier' ? formData.supplierId || undefined : undefined
+
     if (editingCompany) {
       setCompanies(
-        companies.map((company) => (company.id === editingCompany.id ? { ...company, ...formData } : company)),
+        companies.map((company) =>
+          company.id === editingCompany.id ? { ...company, ...formData, supplierId } : company,
+        ),
       )
       logActivity({
         userId: currentUser.id,
@@ -120,6 +128,7 @@ export default function CompaniesPage() {
       const newCompany: Company = {
         id: Math.max(...companies.map((c) => c.id), 0) + 1,
         ...formData,
+        supplierId,
       }
       setCompanies([...companies, newCompany])
       logActivity({
@@ -143,6 +152,16 @@ export default function CompaniesPage() {
     },
     { key: 'phone', header: 'Phone' },
     { key: 'email', header: 'Email' },
+    {
+      key: 'linkedSupplier',
+      header: 'Linked Supplier',
+      render: (c: Company) =>
+        c.supplierId ? (
+          (suppliers.find((s) => s.id === c.supplierId)?.name ?? 'Unknown')
+        ) : (
+          <span className="text-muted small">—</span>
+        ),
+    },
     {
       key: 'status',
       header: 'Status',
@@ -228,6 +247,26 @@ export default function CompaniesPage() {
             <option value="internal">Internal</option>
             <option value="supplier">Supplier</option>
           </Select>
+          {formData.type === 'supplier' && (
+            <Select
+              label="Linked Supplier Record (optional)"
+              value={formData.supplierId}
+              onChange={(e) => setFormData({ ...formData, supplierId: Number(e.target.value) })}
+            >
+              <option value={0}>Not linked</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </option>
+              ))}
+            </Select>
+          )}
+          {formData.type === 'supplier' && (
+            <p className="text-muted small mb-0">
+              Menghubungkan company ini ke record Supplier (data vendor di menu Suppliers) — dipakai untuk
+              menentukan riwayat pengiriman apa yang ditampilkan di Supplier Portal untuk user dari company ini.
+            </p>
+          )}
           <Row className="g-3">
             <Col xs={12} md={6}>
               <Input

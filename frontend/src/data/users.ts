@@ -13,7 +13,7 @@ export interface User {
   warehouseId?: number
 }
 
-export const DEPARTMENTS = ['Management', 'Warehouse', 'Finance', 'IT', 'Operations']
+export const DEPARTMENTS = ['Management', 'Warehouse', 'Finance', 'IT', 'Operations', 'Vendor']
 
 export const mockUsers: User[] = [
   {
@@ -72,5 +72,16 @@ export const mockUsers: User[] = [
     roleId: 3,
     status: 'active',
     createdAt: '2024-02-15',
+  },
+  {
+    id: 6,
+    name: 'Budi Santoso',
+    email: 'budi@alattulisejahtera.co.id',
+    phone: '+622155512001',
+    department: 'Vendor',
+    companyId: 2,
+    roleId: 4,
+    status: 'active',
+    createdAt: '2024-03-01',
   },
 ]

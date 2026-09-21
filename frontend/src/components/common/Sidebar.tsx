@@ -29,6 +29,7 @@ const menuItems: MenuItem[] = [
   { path: '/warehouses', icon: Warehouse, label: 'Warehouses', modules: ['warehouses'] },
   { path: '/suppliers', icon: Truck, label: 'Suppliers', modules: ['suppliers'] },
   { path: '/companies', icon: Building2, label: 'Companies', modules: ['companies'] },
+  { path: '/supplier-portal', icon: Truck, label: 'Supplier Portal', modules: ['supplierPortal'] },
   { path: '/tickets', icon: Ticket, label: 'Tickets', modules: ['tickets'] },
   { path: '/activity-log', icon: History, label: 'Activity Log', modules: ['activityLog'] },
   { path: '/reports', icon: TrendingUp, label: 'Reports', modules: ['reports'] },

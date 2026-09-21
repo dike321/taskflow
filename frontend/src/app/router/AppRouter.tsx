@@ -22,6 +22,7 @@ import StockHistoryPage from '../../pages/inventory/StockHistoryPage'
 import SuppliersPage from '../../pages/SuppliersPage'
 import WarehousesPage from '../../pages/WarehousesPage'
 import CompaniesPage from '../../pages/CompaniesPage'
+import SupplierPortalPage from '../../pages/SupplierPortalPage'
 import ApprovalsPage from '../../pages/ApprovalsPage'
 import TicketsPage from '../../pages/TicketsPage'
 import ActivityLogPage from '../../pages/ActivityLogPage'
@@ -81,6 +82,7 @@ function AppRouter() {
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="warehouses" element={<WarehousesPage />} />
             <Route path="companies" element={<CompaniesPage />} />
+            <Route path="supplier-portal" element={<SupplierPortalPage />} />
             <Route path="activity-log" element={<ActivityLogPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<SettingsLayout />}>

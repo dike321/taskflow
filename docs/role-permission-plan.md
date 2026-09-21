@@ -51,6 +51,7 @@ Daftar aktual di `data/roles.ts` (`MODULES`), bertambah seiring modul baru diban
 | `suppliers` | Suppliers (menu top-level sendiri) | view, create, edit, delete |
 | `warehouses` | Warehouses | view, create, edit, delete |
 | `companies` | Companies (menu top-level sendiri) | view, create, edit, delete |
+| `supplierPortal` | Supplier Portal (khusus role Supplier) | view |
 | `tickets` | Tickets | view, create, edit, delete |
 | `settings` | Settings | view, edit |
 | `activityLog` | Activity Log | view |
@@ -124,10 +125,20 @@ export interface User {
 
 Menjawab `flow.md` poin 5 ("setiap user wajib memiliki companynya masing-masing"). Percobaan pertama field ini (langsung nambah `companyId` ke `User` tanpa entity/form di baliknya) sempat di-revert karena bikin `UsersPage.tsx` gagal type-check — kali ini dibangun lengkap:
 
-- **`Company { id, name, type: 'internal' | 'supplier', address, phone, email, status }`** — entity master data baru, terpisah dari `Supplier`/`Warehouse` yang sudah ada (bukan reuse) sesuai keputusan scope. `type` cuma pembeda tampilan (badge) — organisasi sendiri (`internal`) vs perusahaan vendor eksternal (`supplier`), tidak ada logika lain yang bergantung padanya.
-- **Halaman `CompaniesPage.tsx`** — menu top-level sendiri (sejajar Suppliers/Warehouses), pola CRUD identik `SuppliersPage.tsx`: Table + Modal Add/Edit + Modal delete dengan guard "masih dipakai" (cek `mockUsers.some(u => u.companyId === id)`).
-- **`User.companyId: number`** — **wajib**, bukan optional (sesuai kata "wajib" di flow.md). Form Add/Edit User dapat `<Select>` Company baru (required), default ke company pertama. Kelima mock user di-assign ke company internal (id 1) supaya tidak ada data yang invalid.
-- **Scope yang sengaja tidak dikerjakan** (sesuai keputusan): `companyId` cuma field pencatatan, **tidak** membatasi akses data — beda dari `warehouseId` yang membatasi pilihan warehouse di form transaksi. Kalau nanti dibutuhkan multi-tenant sungguhan (user company A tidak bisa lihat data company B), itu perubahan permission model yang jauh lebih besar, di luar scope ini.
+- **`Company { id, name, type: 'internal' | 'supplier', address, phone, email, status, supplierId? }`** — entity master data baru, terpisah dari `Supplier`/`Warehouse` yang sudah ada (bukan reuse) sesuai keputusan scope. `type` pembeda internal vs eksternal; `supplierId` (cuma relevan kalau `type: 'supplier'`) menghubungkan ke `data/suppliers.tsx` — dipakai Supplier Portal, lihat section di bawah.
+- **Halaman `CompaniesPage.tsx`** — menu top-level sendiri (sejajar Suppliers/Warehouses), pola CRUD identik `SuppliersPage.tsx`: Table + Modal Add/Edit + Modal delete dengan guard "masih dipakai" (cek `mockUsers.some(u => u.companyId === id)`). Kalau `type` diganti ke `supplier`, muncul `<Select>` "Linked Supplier Record" tambahan.
+- **`User.companyId: number`** — **wajib**, bukan optional (sesuai kata "wajib" di flow.md). Form Add/Edit User dapat `<Select>` Company baru (required), default ke company pertama. Kelima mock user awal di-assign ke company internal (id 1) supaya tidak ada data yang invalid.
+- **Scope yang sengaja tidak dikerjakan** (keputusan awal): `companyId` cuma field pencatatan, **tidak** membatasi akses data secara umum — beda dari `warehouseId` yang membatasi pilihan warehouse di form transaksi. Pengecualian: Supplier Portal (di bawah) memang butuh scoping, tapi itu halaman baru yang terisolasi, bukan perubahan ke permission model /CompaniesPage.tsx yang sudah ada.
+
+### Supplier role & Supplier Portal — `pages/SupplierPortalPage.tsx` [Selesai]
+
+Menjawab `flow.md` poin 3 ("...begitu juga supplier [punya usernya masing-masing]"). Beda dari `warehouseId`/`companyId` (murni pencatatan), fitur ini **memang butuh** scoping akses — kalau tidak, user supplier bisa lihat seluruh direktori Suppliers/Companies termasuk kompetitornya, yang berbahaya. Discoped sengaja jadi halaman baru yang terisolasi, bukan mengubah `CompaniesPage.tsx`/model permission yang sudah ada:
+
+- **Role baru `Supplier`** (id 4) — permission cuma `dashboard: ['view']` + `supplierPortal: ['view']`. Tidak dapat akses `companies`/`suppliers`/`inventory.*` sama sekali, jadi sidebar mereka otomatis cuma nampilin Dashboard + Supplier Portal (lewat `hasModuleAccess` yang sudah ada, tidak ada logika baru).
+- **Module key baru `supplierPortal`** (`actions: ['view']`) — juga diberikan ke Admin supaya konsisten "akses penuh", walau untuk Admin halamannya kosong kalau company Admin bukan tipe supplier (graceful, bukan error).
+- **`SupplierPortalPage.tsx`** — halaman baru, bukan reuse `CompaniesPage.tsx`/`StockHistoryPage.tsx`: cari `Company` milik `currentUser.companyId`, tampilkan profilnya (read-only), lalu filter `transactions` dari `useInventoryData()` ke `type === 'in' && t.supplierId === myCompany.supplierId` — jadi HANYA pengiriman dari supplier yang terhubung ke company user itu sendiri, tervalidasi lewat E2E test (transaksi supplier lain yang ada di sistem tidak muncul di portal). Kalau company belum dihubungkan ke record Supplier manapun, tampil pesan graceful, bukan halaman kosong membingungkan.
+- **Mock user baru**: Budi Santoso (`budi@alattulisejahtera.co.id`, roleId 4, companyId 2 → "PT Alat Tulis Sejahtera") untuk testing/demo — namanya sengaja sama dengan `contactPerson` di `data/suppliers.tsx` id 1.
+- **Belum dikerjakan (di luar scope)**: portal ini read-only, belum ada aksi tulis dari sisi supplier (konfirmasi PO, update status pengiriman, dll) — cuma "lihat status", bukan "kelola" penuh.
 
 ---
 
