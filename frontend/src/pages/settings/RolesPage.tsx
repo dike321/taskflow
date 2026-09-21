@@ -5,6 +5,7 @@ import Card from '../../components/ui/Card'
 import Table from '../../components/ui/Table'
 import Modal from '../../components/ui/Modal'
 import Input from '../../components/ui/Input'
+import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
 import { mockRoles, MODULES, ALL_ACTIONS } from '../../data/roles'
@@ -17,9 +18,17 @@ interface RoleFormData {
   name: string
   description: string
   permissions: Record<string, PermissionAction[]>
+  /** 0 = tidak bisa approve final sama sekali (disimpan sebagai undefined di Role). Lihat Role.approvalLevel. */
+  approvalLevel: number
 }
 
-const emptyFormData: RoleFormData = { name: '', description: '', permissions: {} }
+const emptyFormData: RoleFormData = { name: '', description: '', permissions: {}, approvalLevel: 0 }
+
+const approvalLevelLabel: Record<number, string> = {
+  0: 'None — cannot approve',
+  1: 'Level 1 — first approval (mis. Supervisor)',
+  2: 'Level 2 — final approval (mis. Admin)',
+}
 
 export default function RolesPage() {
   const { currentUser } = useSession()
@@ -33,7 +42,12 @@ export default function RolesPage() {
 
   const handleEdit = (role: Role) => {
     setEditingRole(role)
-    setFormData({ name: role.name, description: role.description, permissions: role.permissions })
+    setFormData({
+      name: role.name,
+      description: role.description,
+      permissions: role.permissions,
+      approvalLevel: role.approvalLevel ?? 0,
+    })
     setIsModalOpen(true)
   }
 
@@ -75,8 +89,10 @@ export default function RolesPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
 
+    const approvalLevel = formData.approvalLevel || undefined
+
     if (editingRole) {
-      setRoles(roles.map((role) => (role.id === editingRole.id ? { ...role, ...formData } : role)))
+      setRoles(roles.map((role) => (role.id === editingRole.id ? { ...role, ...formData, approvalLevel } : role)))
       logActivity({
         userId: currentUser.id,
         userName: currentUser.name,
@@ -88,6 +104,7 @@ export default function RolesPage() {
       const newRole: Role = {
         id: Math.max(...roles.map((r) => r.id), 0) + 1,
         ...formData,
+        approvalLevel,
       }
       setRoles([...roles, newRole])
       logActivity({
@@ -116,6 +133,16 @@ export default function RolesPage() {
           </Badge>
         )
       },
+    },
+    {
+      key: 'approvalLevel',
+      header: 'Approval Level',
+      render: (role: Role) =>
+        role.approvalLevel ? (
+          <Badge variant={role.approvalLevel >= 2 ? 'success' : 'info'}>Level {role.approvalLevel}</Badge>
+        ) : (
+          <span className="text-muted small">—</span>
+        ),
     },
     {
       key: 'actions',
@@ -172,6 +199,20 @@ export default function RolesPage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Short description of this role"
           />
+          <Select
+            label="Approval Level"
+            value={formData.approvalLevel}
+            onChange={(e) => setFormData({ ...formData, approvalLevel: Number(e.target.value) })}
+          >
+            <option value={0}>{approvalLevelLabel[0]}</option>
+            <option value={1}>{approvalLevelLabel[1]}</option>
+            <option value={2}>{approvalLevelLabel[2]}</option>
+          </Select>
+          <p className="text-muted small mb-0">
+            Untuk approval berjenjang di Inventory (transaksi di atas escalation threshold): role level 1 approve
+            duluan, baru role level 2 kasih final approval — role yang sama tidak bisa melakukan keduanya di
+            transaksi yang sama. Cuma berlaku ke module yang punya permission <code>approve</code> di bawah.
+          </p>
 
           <div>
             <label className="form-label">Permissions</label>

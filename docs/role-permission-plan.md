@@ -30,7 +30,7 @@ export interface Role {
 
 Tidak semua aksi relevan untuk semua module — misal `approve` hanya bermakna untuk `inventory.stockOut`/`inventory.stockIn`, `export` untuk module yang punya laporan. UI Role Management nanti hanya menampilkan aksi yang relevan per module (lihat bagian "Halaman Role Management").
 
-`approvalLevel` **[Selesai]** — ditambahkan belakangan, khusus dipakai fitur approval berjenjang di Inventory (`canApproveAtLevel()` di `utils/permissions.ts`). Admin=2, Warehouse Supervisor=1, Warehouse Staff=undefined (tidak bisa approve apapun). **Belum ada UI-nya di halaman Role Management** — field ini cuma bisa di-set langsung di `mockRoles`, bukan lewat form Add/Edit Role, karena scope awal fitur ini dibatasi ke alur approval saja.
+`approvalLevel` **[Selesai, termasuk UI-nya]** — ditambahkan belakangan, khusus dipakai fitur approval berjenjang di Inventory (`canApproveAtLevel()` di `utils/permissions.ts`). Admin=2, Warehouse Supervisor=1, Warehouse Staff=undefined (tidak bisa approve apapun). Form Add/Edit Role (`RolesPage.tsx`) punya `<Select>` "Approval Level" (None/Level 1/Level 2 — 0 disimpan sebagai `undefined`, bukan `0` literal, biar konsisten sama mock data), plus kolom badge "Approval Level" di tabel Roles. Field ini murni metadata role — baru actionable kalau role itu juga punya permission `approve` di module terkait (`canApproveAtLevel` selalu ngecek keduanya), jadi menaikkan approvalLevel role yang tidak punya `approve` sama sekali tidak berefek.
 
 ### Daftar Module Key [Selesai — sudah tumbuh jauh dari rencana awal]
 
@@ -155,7 +155,7 @@ Routing (`AppRouter.tsx`):
 
 Pola `RolesPage.tsx` mengikuti `UsersPage.tsx` (Table + Modal + konfirmasi hapus), dengan tambahan:
 - **Tabel Roles**: Name, Description, jumlah module yang punya akses, Actions (edit/delete).
-- **Modal Add/Edit Role** (`size="lg"` karena matriks permission butuh ruang lebar): Input Name/Description, lalu **matriks permission** — tabel dengan baris = module, kolom = aksi (`view`/`create`/`edit`/`delete`/`approve`/`export` — kolom yang tidak relevan untuk module tertentu otomatis kosong/tidak ada checkbox), tiap sel berupa checkbox.
+- **Modal Add/Edit Role** (`size="lg"` karena matriks permission butuh ruang lebar): Input Name/Description, `<Select>` Approval Level (None/Level 1/Level 2, lihat bagian `approvalLevel` di atas), lalu **matriks permission** — tabel dengan baris = module, kolom = aksi (`view`/`create`/`edit`/`delete`/`approve`/`export` — kolom yang tidak relevan untuk module tertentu otomatis kosong/tidak ada checkbox), tiap sel berupa checkbox.
 - **Guard hapus role — [Selesai]**: tidak bisa hapus role yang masih dipakai user manapun. Modal konfirmasi hapus menampilkan pesan berisi jumlah & nama user yang memakai role tersebut, tombol Delete disembunyikan (hanya "Close") sampai user-user itu dipindahkan ke role lain.
 
 ---
