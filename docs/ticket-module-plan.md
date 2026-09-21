@@ -76,11 +76,15 @@ Ditambahkan selector "Report" (Inventory Mutations / Tickets) di atas halaman Re
 - Tabel breakdown per grup: Total + jumlah per status (Open/In Progress/Resolved/Closed).
 - Export CSV & Print/PDF pakai mekanisme yang sama seperti mutation report (branch berdasarkan `reportType`).
 
+## SLA & Escalation — `data/tickets.tsx`, `TicketsPage.tsx`, `Header.tsx` [Selesai]
+
+`isTicketOverdue(ticket)` di `data/tickets.tsx`: tiket overdue kalau `dueDate` sudah lewat dan status masih `open`/`in_progress` (resolved/closed tidak pernah overdue).
+- **List & detail Tickets**: badge merah "Overdue" di kolom Due Date + alert banner di modal detail kalau tiket overdue.
+- **Notifikasi (escalation)**: toggle `ticketOverdueAlert` baru. Assignee tiket overdue selalu dapat notifikasi; user dengan permission `edit` pada module `tickets` (Admin/Supervisor) dapat notifikasi untuk **semua** tiket overdue termasuk yang unassigned (eskalasi ke manajemen), bukan cuma milik sendiri — dedup otomatis by ticket id kalau assignee juga punya `edit`.
+
 ## Belum dikerjakan (roadmap lanjutan, di luar Phase 1)
 
-Sengaja tidak dikerjakan sekaligus supaya Phase 1 tetap fokus:
-1. **Attachment** di tiket (scan foto kerusakan, dsb) — pola `Attachment` sudah ada di `data/inventory.tsx`, tinggal digeneralisasi kalau dibutuhkan.
-2. **SLA & escalation** — belum ada due-date overdue alert atau eskalasi otomatis kalau lewat due date (bisa nebeng ke notification bell yang sudah dibuat).
+1. **Attachment** di tiket (scan foto kerusakan, dsb) — pola `Attachment` sudah ada di `data/inventory.tsx`, tinggal digeneralisasi kalau dibutuhkan. Ini satu-satunya item roadmap awal yang belum dikerjakan.
 
 ## Verifikasi
 

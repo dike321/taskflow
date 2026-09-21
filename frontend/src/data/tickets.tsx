@@ -37,6 +37,11 @@ export const NEXT_STATUS: Partial<Record<TicketStatus, TicketStatus>> = {
   resolved: 'closed',
 }
 
+/** Tiket dianggap overdue kalau due date sudah lewat dan masih aktif (open/in_progress) — resolved/closed tidak pernah overdue. */
+export function isTicketOverdue(ticket: Ticket, referenceDate: string = new Date().toISOString().split('T')[0]) {
+  return !!ticket.dueDate && ticket.dueDate < referenceDate && (ticket.status === 'open' || ticket.status === 'in_progress')
+}
+
 export const mockTickets: Ticket[] = [
   {
     id: 1,

@@ -15,6 +15,7 @@ import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
   NEXT_STATUS,
+  isTicketOverdue,
   useTickets,
 } from '../data/tickets'
 import type { Ticket, TicketPriority, TicketStatus } from '../data/tickets'
@@ -258,7 +259,19 @@ export default function TicketsPage() {
     },
     { key: 'reporter', header: 'Reporter', render: (t: Ticket) => getUserName(t.reporterId) },
     { key: 'assignee', header: 'Assignee', render: (t: Ticket) => t.assigneeId ? getUserName(t.assigneeId) : <span className="text-muted small">Unassigned</span> },
-    { key: 'dueDate', header: 'Due Date', render: (t: Ticket) => t.dueDate ?? '-' },
+    {
+      key: 'dueDate',
+      header: 'Due Date',
+      render: (t: Ticket) =>
+        t.dueDate ? (
+          <span className={isTicketOverdue(t) ? 'text-danger fw-medium' : undefined}>
+            {t.dueDate}
+            {isTicketOverdue(t) && <Badge variant="danger" className="ms-2">Overdue</Badge>}
+          </span>
+        ) : (
+          '-'
+        ),
+    },
     {
       key: 'actions',
       header: 'Actions',
@@ -458,9 +471,16 @@ export default function TicketsPage() {
               </Col>
               <Col xs={6} md={3}>
                 <div className="fw-medium text-body">Due Date</div>
-                {detailTarget.dueDate ?? '-'}
+                <span className={isTicketOverdue(detailTarget) ? 'text-danger fw-medium' : undefined}>
+                  {detailTarget.dueDate ?? '-'}
+                </span>
               </Col>
             </Row>
+            {isTicketOverdue(detailTarget) && (
+              <div className="alert alert-danger py-2 px-3 mb-0 small">
+                This ticket is overdue — due date has passed and it is still {statusLabel[detailTarget.status].toLowerCase()}.
+              </div>
+            )}
 
             {canChangeStatus(detailTarget) && (
               <div className="d-flex gap-2">

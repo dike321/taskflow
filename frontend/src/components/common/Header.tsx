@@ -12,7 +12,7 @@ import { getBatchStatus, getStockQuantity, useInventoryData } from '../../data/i
 import type { StockTransactionType } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
 import { useNotificationPreferences } from '../../data/settings'
-import { useTickets } from '../../data/tickets'
+import { isTicketOverdue, useTickets } from '../../data/tickets'
 
 interface NotificationItem {
   id: string
@@ -147,7 +147,24 @@ export default function Header() {
             })
         : []
 
+    const ticketsOverdue: NotificationItem[] =
+      preferences.ticketOverdueAlert && hasModuleAccess(currentUser, 'tickets')
+        ? tickets
+            .filter(
+              (t) => isTicketOverdue(t) && (t.assigneeId === currentUser.id || hasPermission(currentUser, 'tickets', 'edit')),
+            )
+            .map((t) => ({
+              id: `ticket-overdue-${t.id}`,
+              icon: AlertTriangle,
+              variant: 'danger' as const,
+              title: `Overdue: ${t.title}`,
+              description: `Due ${t.dueDate} · ${t.category} · ${t.assigneeId ? (mockUsers.find((u) => u.id === t.assigneeId)?.name ?? 'Unknown') : 'Unassigned'}`,
+              to: '/tickets',
+            }))
+        : []
+
     return [
+      ...ticketsOverdue,
       ...pendingApprovals,
       ...pendingOpnames,
       ...ticketsAssignedToMe,

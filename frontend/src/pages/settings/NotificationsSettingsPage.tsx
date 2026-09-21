@@ -33,6 +33,11 @@ const toggles: { key: keyof NotificationPreferences; label: string; description:
     description: 'Notify when someone comments on a ticket you reported or are assigned to',
   },
   {
+    key: 'ticketOverdueAlert',
+    label: 'Ticket overdue alert',
+    description: 'Notify when a ticket passes its due date while still open or in progress',
+  },
+  {
     key: 'emailNotifications',
     label: 'Email notifications',
     description: 'Also send the above alerts by email, in addition to in-app notifications',
