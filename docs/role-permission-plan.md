@@ -10,7 +10,7 @@ Role juga harus **dinamis** — bisa dibuat/dikelola sendiri lewat halaman admin
 
 Ini fitur **lintas-modul** (bukan cuma punya Inventory) — memengaruhi `Sidebar`, `UsersPage`, dan nantinya semua modul termasuk Inventory. Karena itu didokumentasikan terpisah dari `docs/inventory-module-plan.md`, tapi keduanya saling terhubung (lihat bagian akhir dokumen ini).
 
-Status: **Halaman Role Management (CRUD) mulai diimplementasikan** sebagai sub-menu di dalam "Settings" (bukan menu top-level sidebar terpisah seperti draft awal). Bagian lain di dokumen ini (migrasi `User.roleId`, permission enforcement di Sidebar/tombol aksi, `currentUser`) **masih rencana, belum dikerjakan** — lihat "Urutan implementasi" di bagian bawah untuk status tiap tahap.
+Status: **[Selesai]** — seluruh dokumen ini sudah diimplementasikan (Role Management CRUD, migrasi `User.roleId`, `currentUser`/session, permission enforcement di Sidebar & tombol aksi tiap modul) dan sudah dipakai konsisten oleh modul-modul yang dibangun setelahnya (Suppliers, Warehouses, Tickets). Disinkronkan ulang 2026-09-21 — sebelumnya dokumen ini menyebut sebagian besar "masih rencana" padahal sudah lama selesai. Module key & contoh `mockRoles` di bawah juga sudah tertinggal dari data aktual di `data/roles.ts`, sudah diupdate.
 
 ---
 
@@ -29,44 +29,36 @@ export interface Role {
 
 Tidak semua aksi relevan untuk semua module — misal `approve` hanya bermakna untuk `inventory.stockOut`/`inventory.stockIn`, `export` untuk module yang punya laporan. UI Role Management nanti hanya menampilkan aksi yang relevan per module (lihat bagian "Halaman Role Management").
 
-### Daftar Module Key (target permission)
+### Daftar Module Key [Selesai — sudah tumbuh jauh dari rencana awal]
 
-Menyesuaikan menu yang ada sekarang + rencana Inventory:
+Daftar aktual di `data/roles.ts` (`MODULES`), bertambah seiring modul baru dibangun:
 
-| Module key | Menu / Halaman |
-|---|---|
-| `dashboard` | Dashboard |
-| `users` | Users |
-| `roles` | Role Management (meta — biasanya cuma Admin yang boleh edit) |
-| `inventory.items` | Inventory → tab Items |
-| `inventory.stockIn` | Inventory → tab Stock In |
-| `inventory.stockOut` | Inventory → tab Stock Out |
-| `inventory.history` | Inventory → tab History |
-| `tickets` | Tickets |
-| `settings` | Settings |
+| Module key | Menu / Halaman | Aksi tersedia |
+|---|---|---|
+| `dashboard` | Dashboard | view |
+| `users` | Users | view, create, edit, delete |
+| `roles` | Roles (sub-menu Settings) | view, create, edit, delete |
+| `inventory.items` | Inventory → tab Items | view, create, edit, delete |
+| `inventory.stockIn` | Inventory → tab Stock In | view, create, edit, approve |
+| `inventory.stockOut` | Inventory → tab Stock Out | view, create, edit, approve |
+| `inventory.history` | Inventory → tab History | view, export |
+| `inventory.transfer` | Inventory → tab Transfer | view, create, approve |
+| `inventory.opname` | Inventory → tab Stock Opname | view, create, edit, approve |
+| `inventory.batches` | Inventory → tab Batches | view |
+| `suppliers` | Suppliers (menu top-level sendiri) | view, create, edit, delete |
+| `warehouses` | Warehouses | view, create, edit, delete |
+| `tickets` | Tickets | view, create, edit, delete |
+| `settings` | Settings | view, edit |
+| `activityLog` | Activity Log | view |
+| `reports` | Reports | view, export |
 
-Daftar ini akan bertambah seiring modul baru ditambahkan (Projects, Comments, dst sesuai README).
+### Contoh mock role [ilustratif — lihat `data/roles.ts` untuk data lengkap & terkini]
 
-### Contoh mock role
+Tiga role dasar sudah ada (`mockRoles`), masing-masing dengan permission penuh ke semua module di atas untuk Admin, dan subset untuk Warehouse Staff/Supervisor (termasuk `tickets`, `suppliers`, `warehouses` — bukan cuma Inventory seperti draft awal dokumen ini):
 
 ```ts
 export const mockRoles: Role[] = [
-  {
-    id: 1,
-    name: 'Admin',
-    description: 'Akses penuh ke seluruh sistem',
-    permissions: {
-      dashboard: ['view'],
-      users: ['view', 'create', 'edit', 'delete'],
-      roles: ['view', 'create', 'edit', 'delete'],
-      'inventory.items': ['view', 'create', 'edit', 'delete'],
-      'inventory.stockIn': ['view', 'create', 'edit', 'approve'],
-      'inventory.stockOut': ['view', 'create', 'edit', 'approve'],
-      'inventory.history': ['view', 'export'],
-      tickets: ['view', 'create', 'edit', 'delete'],
-      settings: ['view', 'edit'],
-    },
-  },
+  { id: 1, name: 'Admin', permissions: { /* semua module, semua aksi */ } },
   {
     id: 2,
     name: 'Warehouse Staff',
@@ -77,6 +69,12 @@ export const mockRoles: Role[] = [
       'inventory.stockIn': ['view', 'create'],
       'inventory.stockOut': ['view', 'create'],
       'inventory.history': ['view'],
+      'inventory.transfer': ['view', 'create'],
+      'inventory.opname': ['view', 'create'],
+      'inventory.batches': ['view'],
+      suppliers: ['view'],
+      warehouses: ['view'],
+      tickets: ['view', 'create'], // siapapun boleh lapor tiket & komentar
     },
   },
   {
@@ -84,11 +82,7 @@ export const mockRoles: Role[] = [
     name: 'Warehouse Supervisor',
     description: 'Approve transaksi, kelola master barang',
     permissions: {
-      dashboard: ['view'],
-      'inventory.items': ['view', 'create', 'edit'],
-      'inventory.stockIn': ['view', 'create', 'approve'],
-      'inventory.stockOut': ['view', 'create', 'approve'],
-      'inventory.history': ['view', 'export'],
+      /* seperti Staff + approve + edit + reports.view/export */
     },
   },
 ]
@@ -108,7 +102,8 @@ export interface User {
   name: string
   email: string
   phone: string
-  roleId: number     // sebelumnya: role: string
+  department: string  // ditambahkan belakangan untuk cost tracking, lihat docs/inventory-module-plan.md
+  roleId: number       // sebelumnya: role: string
   status: 'active' | 'inactive'
   createdAt: string
 }
@@ -127,8 +122,12 @@ export interface User {
 
 ```
 src/pages/settings/
-├── SettingsLayout.tsx   # PageToolbar + tab nav + <Outlet/> (pola sama seperti InventoryLayout.tsx)
-└── RolesPage.tsx         # sub-menu pertama; tab lain (General, dst) menyusul nanti
+├── SettingsLayout.tsx              # PageToolbar + tab nav + <Outlet/> (pola sama seperti InventoryLayout.tsx)
+├── RolesPage.tsx                    # Role Management
+├── ItemsPage.tsx                    # master data Item (lihat docs/inventory-module-plan.md)
+├── GeneralSettingsPage.tsx          # profil company
+├── MyProfilePage.tsx                # profil currentUser
+└── NotificationsSettingsPage.tsx    # toggle preferensi notification bell
 ```
 
 Routing (`AppRouter.tsx`):
@@ -149,18 +148,20 @@ Pola `RolesPage.tsx` mengikuti `UsersPage.tsx` (Table + Modal + konfirmasi hapus
 ## Penerapan permission di UI
 
 ### Sidebar (`Sidebar.tsx`) — [Selesai]
-`menuItems` sekarang punya field `modules: string[]` (module key yang relevan untuk menu itu — Inventory memetakan ke keempat sub-modulenya sekaligus, Settings ke `settings` & `roles`), difilter dengan `hasModuleAccess(currentUser, module)` — menu Sidebar hanya muncul kalau `currentUser` punya akses (aksi apapun) ke minimal salah satu module terkait. Sudah diverifikasi: user dengan role Warehouse Staff cuma melihat Dashboard & Inventory di sidebar, sisanya (Users/Tickets/Settings) otomatis tersembunyi.
+`menuItems` sekarang punya field `modules: string[]` (module key yang relevan untuk menu itu — Inventory memetakan ke seluruh sub-modulenya sekaligus, Settings ke `settings` & `roles`), difilter dengan `hasModuleAccess(currentUser, module)` — menu Sidebar hanya muncul kalau `currentUser` punya akses (aksi apapun) ke minimal salah satu module terkait. Sudah diverifikasi berulang kali termasuk untuk modul Tickets: user dengan role Warehouse Staff (`view`+`create` saja) tidak melihat tombol Edit/Delete dan tidak melihat menu yang dia tidak punya akses sama sekali.
 
 Sekalian diperbaiki bug kecil: highlight menu aktif sebelumnya exact-match path (`location.pathname === item.path`), jadi rusak begitu Settings jadi nested route (`/settings/roles`). Sekarang pakai prefix-match (`startsWith`) supaya tetap aktif di semua sub-halaman.
 
 `InventoryLayout.tsx` sudah dibangun dengan tab filtering sejak awal (lihat `docs/inventory-module-plan.md`). `SettingsLayout.tsx` sendiri sudah tidak pakai tab lagi — navigasi Settings→Role sekarang lewat submenu Sidebar langsung (lihat catatan di bagian Sidebar di atas).
 
 ### Tombol aksi per halaman
-Pola konsisten di semua modul (Users, dan nanti Inventory): tombol "Add"/"Edit"/"Delete"/"Approve" hanya dirender kalau `hasPermission(module, action)` bernilai true. Kalau user hanya punya `view`, halaman tetap bisa dibuka (lihat data) tapi tanpa tombol aksi apapun.
+Pola konsisten di semua modul: tombol "Add"/"Edit"/"Delete"/"Approve" hanya dirender kalau `hasPermission(module, action)` bernilai true. Kalau user hanya punya `view`, halaman tetap bisa dibuka (lihat data) tapi tanpa tombol aksi apapun.
 
 ### Prasyarat: "current logged-in user" — [Selesai]
 
-`src/data/session.ts` — `currentUser` di-hardcode ke `mockUsers[0]` (Admin) untuk sekarang. Nanti kalau ada backend/auth beneran, file ini yang diganti jadi ambil dari token/API, tanpa perlu ubah komponen yang sudah pakai `hasPermission`.
+`src/data/session.tsx` — `currentUser` di-hardcode ke `mockUsers[0]` (Admin) untuk sekarang, dengan `switchUser(userId)` untuk testing (dipakai dropdown "Switch User (testing)" di Header). Nanti kalau ada backend/auth beneran, file ini yang diganti jadi ambil dari token/API, tanpa perlu ubah komponen yang sudah pakai `hasPermission`.
+
+**Catatan gap yang masih ada**: `LoginPage.tsx` (halaman `/login`) baru UI kosong — validasi form client-side saja, tidak pernah mengecek kredensial ke `mockUsers` atau memanggil `switchUser`/mengubah `currentUser`; submit sukses cuma redirect ke `/dashboard` setelah delay palsu. Juga belum ada route guard (semua URL bisa diakses tanpa "login"). Ini di luar scope dokumen ini (module Role & Permission itu sendiri sudah selesai & di-enforce di semua modul), tapi "Authentication" sebagai planned feature terpisah di README masih belum nyata.
 
 `src/utils/permissions.ts` — helper mengambil parameter `User` langsung (bukan `Role`) supaya lebih praktis dipakai di komponen (yang biasanya punya akses ke `currentUser`, bukan `Role` secara langsung):
 
@@ -186,23 +187,21 @@ export function hasModuleAccess(user: User, module: string): boolean {
 
 ---
 
-## Keterkaitan dengan `docs/inventory-module-plan.md`
+## Keterkaitan dengan modul-modul lain
 
-- `StockTransaction.picId` dan `approvedBy` (sudah direncanakan di dokumen Inventory) sekarang punya makna konkret: keduanya merujuk ke `User.id`, dan tombol "Approve" di Stock In/Out nanti muncul berdasarkan `hasPermission(currentUser, 'inventory.stockOut', 'approve')`.
-- Roadmap Inventory poin #5 ("Role & Permission granular — belum diputuskan") **sekarang terjawab oleh dokumen ini**.
+- `StockTransaction.picId` dan `approvedBy` merujuk ke `User.id`; tombol "Approve" di Stock In/Out/Transfer/Opname muncul berdasarkan `hasPermission(currentUser, module, 'approve')`. Lihat `docs/inventory-module-plan.md`.
+- Modul-modul yang dibangun setelah dokumen ini (Suppliers, Warehouses, dan terutama Tickets — lihat `docs/ticket-module-plan.md`) mengikuti pola yang sama persis: tambah module key baru di `MODULES`/`mockRoles`, gating tombol via `hasPermission`, gating menu/tab via `hasModuleAccess`. Tickets bahkan menambah satu pola baru di atasnya: assignee tiket boleh ubah status tiketnya sendiri walau tidak punya permission `edit` generik (exception khusus, dicek terpisah dari `hasPermission`).
 
 ---
 
-## Urutan implementasi yang disarankan
-
-Karena Role & Permission ini jadi fondasi untuk fitur approval di Inventory, dan cukup besar sendiri, disarankan:
+## Urutan implementasi
 
 1. ~~`src/data/roles.ts` (fondasi data)~~ **[Selesai]**
 2. ~~Halaman `RolesPage.tsx` (Role Management) sebagai sub-menu Settings~~ **[Selesai]**
 3. ~~Migrasi `User.role` → `User.roleId` + update `UsersPage.tsx` + guard hapus role~~ **[Selesai]**
-4. ~~`src/data/session.ts` + `src/utils/permissions.ts` (`currentUser` mock + helper `hasPermission`/`hasModuleAccess`)~~ **[Selesai]**
+4. ~~`src/data/session.tsx` + `src/utils/permissions.ts` (`currentUser` mock + helper `hasPermission`/`hasModuleAccess`)~~ **[Selesai]**
 5. ~~Sidebar filtering berdasarkan permission~~ **[Selesai]**
-6. ~~Implementasi Inventory Items dengan permission terpasang dari awal~~ **[Selesai]** — tombol aksi digating `hasPermission`, tab `InventoryLayout.tsx` digating `hasModuleAccess`. Stock In/Out/History menyusul dengan pola yang sama.
+6. ~~Enforcement permission di semua modul (Inventory, Suppliers, Warehouses, Tickets)~~ **[Selesai]** — tombol aksi digating `hasPermission`, tab/menu digating `hasModuleAccess`, pola konsisten di seluruh app.
 
 ## Verifikasi
 
