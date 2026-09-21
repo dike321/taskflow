@@ -82,9 +82,14 @@ export default function StockTransferPage() {
       const matchesFrom = fromFilter === 'all' || t.fromWarehouseId === Number(fromFilter)
       const matchesTo = toFilter === 'all' || t.toWarehouseId === Number(toFilter)
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter
-      return matchesItem && matchesFrom && matchesTo && matchesStatus
+      // User dengan warehouseId di-assign cuma boleh lihat transfer yang menyentuh warehouse-nya (asal ATAU tujuan).
+      const matchesMyWarehouse =
+        !currentUser.warehouseId ||
+        t.fromWarehouseId === currentUser.warehouseId ||
+        t.toWarehouseId === currentUser.warehouseId
+      return matchesItem && matchesFrom && matchesTo && matchesStatus && matchesMyWarehouse
     })
-  }, [transferTransactions, itemFilter, fromFilter, toFilter, statusFilter])
+  }, [transferTransactions, itemFilter, fromFilter, toFilter, statusFilter, currentUser.warehouseId])
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''

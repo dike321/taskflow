@@ -3,6 +3,7 @@ import { Row, Col } from 'react-bootstrap'
 import Card from '../components/ui/Card'
 import Table from '../components/ui/Table'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import PageToolbar from '../components/common/PageToolbar'
 import { useCompanies } from '../data/companies'
 import { useSuppliers } from '../data/suppliers'
@@ -10,6 +11,9 @@ import { useInventoryData } from '../data/inventory'
 import type { StockTransaction } from '../data/inventory'
 import { useWarehouses } from '../data/warehouses'
 import { useSession } from '../data/session'
+import { useActivityLog } from '../data/activityLog'
+
+const today = () => new Date().toISOString().split('T')[0]
 
 const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger' | 'info'> = {
   approved: 'success',
@@ -28,8 +32,9 @@ export default function SupplierPortalPage() {
   const { currentUser } = useSession()
   const { companies } = useCompanies()
   const { suppliers } = useSuppliers()
-  const { items, transactions } = useInventoryData()
+  const { items, transactions, setTransactions } = useInventoryData()
   const { warehouses } = useWarehouses()
+  const { logActivity } = useActivityLog()
 
   const myCompany = companies.find((c) => c.id === currentUser.companyId)
   const linkedSupplier = myCompany?.supplierId ? suppliers.find((s) => s.id === myCompany.supplierId) : undefined
@@ -45,6 +50,19 @@ export default function SupplierPortalPage() {
       .filter((t) => t.type === 'in' && t.supplierId === linkedSupplier.id)
       .sort((a, b) => (a.date < b.date ? 1 : -1))
   }, [transactions, linkedSupplier])
+
+  const handleConfirmShipment = (transaction: StockTransaction) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === transaction.id ? { ...t, supplierConfirmedAt: today() } : t)),
+    )
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'update',
+      module: 'supplierPortal',
+      description: `Confirmed shipment for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) — ref ${transaction.reference ?? '-'}`,
+    })
+  }
 
   const columns = [
     { key: 'date', header: 'Date' },
@@ -63,6 +81,18 @@ export default function SupplierPortalPage() {
       key: 'status',
       header: 'Status',
       render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{statusLabel[t.status]}</Badge>,
+    },
+    {
+      key: 'shipment',
+      header: 'Shipment',
+      render: (t: StockTransaction) =>
+        t.supplierConfirmedAt ? (
+          <span className="small text-success">Confirmed {t.supplierConfirmedAt}</span>
+        ) : (
+          <Button variant="secondary" size="sm" onClick={() => handleConfirmShipment(t)}>
+            Confirm Shipment
+          </Button>
+        ),
     },
   ]
 

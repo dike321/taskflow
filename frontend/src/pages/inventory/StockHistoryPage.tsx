@@ -32,6 +32,8 @@ interface HistoryRow {
   note?: string
   attachments?: Attachment[]
   status: StockTransaction['status']
+  /** Cuma diisi untuk type 'in' — kapan supplier konfirmasi kirim barang lewat Supplier Portal. */
+  supplierConfirmedAt?: string
 }
 
 const typeVariant: Record<HistoryType, 'success' | 'danger' | 'info' | 'warning'> = {
@@ -61,9 +63,16 @@ export default function StockHistoryPage() {
 
   const canExport = hasPermission(currentUser, 'inventory.history', 'export')
 
+  // User dengan warehouseId di-assign cuma boleh lihat history warehouse-nya sendiri (lihat User.warehouseId).
+  const warehouseOptions = currentUser.warehouseId
+    ? warehouses.filter((w) => w.id === currentUser.warehouseId)
+    : warehouses
+
   const [itemFilter, setItemFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [warehouseFilter, setWarehouseFilter] = useState(
+    currentUser.warehouseId ? String(currentUser.warehouseId) : 'all',
+  )
   const [statusFilter, setStatusFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [dateFrom, setDateFrom] = useState('')
@@ -96,6 +105,7 @@ export default function StockHistoryPage() {
       batchLabel: t.batchNumber ? `${t.batchNumber} (exp ${t.expiryDate})` : undefined,
       note: t.note,
       attachments: t.attachments,
+      supplierConfirmedAt: t.supplierConfirmedAt,
       status: t.status,
     }))
 
@@ -121,7 +131,9 @@ export default function StockHistoryPage() {
       .filter((row) => {
         const matchesItem = itemFilter === 'all' || row.itemId === Number(itemFilter)
         const matchesType = typeFilter === 'all' || row.type === typeFilter
-        const matchesWh = warehouseFilter === 'all' || row.warehouseIds.includes(Number(warehouseFilter))
+        const matchesWh = currentUser.warehouseId
+          ? row.warehouseIds.includes(currentUser.warehouseId)
+          : warehouseFilter === 'all' || row.warehouseIds.includes(Number(warehouseFilter))
         const matchesStatus = statusFilter === 'all' || row.status === statusFilter
         const matchesDepartment = departmentFilter === 'all' || row.department === departmentFilter
         const matchesFrom = !dateFrom || row.date >= dateFrom
@@ -129,7 +141,7 @@ export default function StockHistoryPage() {
         return matchesItem && matchesType && matchesWh && matchesStatus && matchesDepartment && matchesFrom && matchesTo
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1))
-  }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, departmentFilter, dateFrom, dateTo])
+  }, [rows, itemFilter, typeFilter, warehouseFilter, statusFilter, departmentFilter, dateFrom, dateTo, currentUser.warehouseId])
 
   const handleExport = () => {
     const header = ['Date', 'Type', 'Item', 'Quantity', 'Warehouse', 'PIC', 'Department', 'Batch/Expiry', 'Reference', 'Status', 'Note', 'Documents']
@@ -174,7 +186,20 @@ export default function StockHistoryPage() {
     { key: 'pic', header: 'PIC', render: (row: HistoryRow) => getUserName(row.picId) },
     { key: 'department', header: 'Department', render: (row: HistoryRow) => row.department ?? '-' },
     { key: 'batch', header: 'Batch / Expiry', render: (row: HistoryRow) => row.batchLabel ?? '-' },
-    { key: 'reference', header: 'Reference', render: (row: HistoryRow) => row.reference },
+    {
+      key: 'reference',
+      header: 'Reference',
+      render: (row: HistoryRow) => (
+        <span>
+          {row.reference}
+          {row.supplierConfirmedAt && (
+            <span className="d-block text-success" style={{ fontSize: '0.7rem' }}>
+              Supplier confirmed {row.supplierConfirmedAt}
+            </span>
+          )}
+        </span>
+      ),
+    },
     {
       key: 'attachments',
       header: 'Documents',
@@ -239,8 +264,8 @@ export default function StockHistoryPage() {
           </Col>
           <Col xs={12} md={6} lg={2}>
             <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-              <option value="all">All Warehouses</option>
-              {warehouses.map((warehouse) => (
+              {!currentUser.warehouseId && <option value="all">All Warehouses</option>}
+              {warehouseOptions.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </option>

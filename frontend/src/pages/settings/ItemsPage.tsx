@@ -50,14 +50,18 @@ export default function ItemsPage() {
   const canEdit = hasPermission(currentUser, 'inventory.items', 'edit')
   const canDelete = hasPermission(currentUser, 'inventory.items', 'delete')
 
-  const totalStock = (itemId: number) => getStockQuantity(warehouseStock, itemId)
+  // User dengan warehouseId di-assign cuma lihat stok warehouse-nya sendiri, bukan total semua gudang.
+  const totalStock = (itemId: number) => getStockQuantity(warehouseStock, itemId, currentUser.warehouseId)
+  const scopedWarehouses = currentUser.warehouseId
+    ? warehouses.filter((w) => w.id === currentUser.warehouseId)
+    : warehouses
 
   const filteredItems = useMemo(() => {
     const sku = skuQuery.trim().toLowerCase()
     const name = nameQuery.trim().toLowerCase()
 
     return items.filter((item) => {
-      const stock = getStockQuantity(warehouseStock, item.id)
+      const stock = getStockQuantity(warehouseStock, item.id, currentUser.warehouseId)
       const matchesSku = !sku || item.sku.toLowerCase().includes(sku)
       const matchesName = !name || item.name.toLowerCase().includes(name)
       const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter
@@ -68,7 +72,7 @@ export default function ItemsPage() {
 
       return matchesSku && matchesName && matchesCategory && matchesStock
     })
-  }, [items, warehouseStock, skuQuery, nameQuery, categoryFilter, stockFilter])
+  }, [items, warehouseStock, skuQuery, nameQuery, categoryFilter, stockFilter, currentUser.warehouseId])
 
   const handleEdit = (item: Item) => {
     setEditingItem(item)
@@ -194,7 +198,7 @@ export default function ItemsPage() {
     },
     {
       key: 'stock',
-      header: 'Stock (All Warehouses)',
+      header: currentUser.warehouseId ? `Stock (${scopedWarehouses[0]?.name ?? 'My Warehouse'})` : 'Stock (All Warehouses)',
       render: (item: Item) => {
         const stock = totalStock(item.id)
         return (
@@ -425,7 +429,7 @@ export default function ItemsPage() {
       >
         <div className="d-flex flex-column gap-2">
           {breakdownTarget &&
-            warehouses.map((warehouse) => {
+            scopedWarehouses.map((warehouse) => {
               const qty = getStockQuantity(warehouseStock, breakdownTarget.id, warehouse.id)
               return (
                 <div key={warehouse.id} className="d-flex align-items-center justify-content-between py-1 border-bottom">

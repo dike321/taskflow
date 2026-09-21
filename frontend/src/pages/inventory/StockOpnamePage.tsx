@@ -68,17 +68,21 @@ export default function StockOpnamePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const [itemFilter, setItemFilter] = useState('all')
-  const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [warehouseFilter, setWarehouseFilter] = useState(
+    currentUser.warehouseId ? String(currentUser.warehouseId) : 'all',
+  )
   const [statusFilter, setStatusFilter] = useState('all')
 
   const filteredOpnames = useMemo(() => {
     return stockOpnames.filter((o) => {
       const matchesItem = itemFilter === 'all' || o.itemId === Number(itemFilter)
-      const matchesWarehouse = warehouseFilter === 'all' || o.warehouseId === Number(warehouseFilter)
+      const matchesWarehouse = currentUser.warehouseId
+        ? o.warehouseId === currentUser.warehouseId
+        : warehouseFilter === 'all' || o.warehouseId === Number(warehouseFilter)
       const matchesStatus = statusFilter === 'all' || o.status === statusFilter
       return matchesItem && matchesWarehouse && matchesStatus
     })
-  }, [stockOpnames, itemFilter, warehouseFilter, statusFilter])
+  }, [stockOpnames, itemFilter, warehouseFilter, statusFilter, currentUser.warehouseId])
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
@@ -204,12 +208,14 @@ export default function StockOpnamePage() {
           </Col>
           <Col xs={12} md={6} lg={3}>
             <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-              <option value="all">All Warehouses</option>
-              {warehouses.map((warehouse) => (
-                <option key={warehouse.id} value={warehouse.id}>
-                  {warehouse.name}
-                </option>
-              ))}
+              {!currentUser.warehouseId && <option value="all">All Warehouses</option>}
+              {(currentUser.warehouseId ? warehouses.filter((w) => w.id === currentUser.warehouseId) : warehouses).map(
+                (warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
+                ),
+              )}
             </Select>
           </Col>
           <Col xs={12} md={6} lg={3}>

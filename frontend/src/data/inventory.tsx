@@ -121,6 +121,8 @@ export interface StockTransaction {
   approvedAt?: string
   reference?: string
   supplierId?: number
+  /** Diisi supplier sendiri lewat Supplier Portal — "saya sudah kirim barang ini", independen dari status approval internal. */
+  supplierConfirmedAt?: string
   note?: string
   /** Cost center: departemen pemakai barang keluar. Khusus type 'out'. */
   department?: string

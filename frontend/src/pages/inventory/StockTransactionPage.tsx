@@ -98,7 +98,9 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const barcodeInputRef = useRef<HTMLInputElement>(null)
 
   const [itemFilter, setItemFilter] = useState('all')
-  const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [warehouseFilter, setWarehouseFilter] = useState(
+    currentUser.warehouseId ? String(currentUser.warehouseId) : 'all',
+  )
   const [statusFilter, setStatusFilter] = useState('all')
 
   const typeTransactions = useMemo(() => transactions.filter((t) => t.type === type), [transactions, type])
@@ -106,11 +108,13 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const filteredTransactions = useMemo(() => {
     return typeTransactions.filter((t) => {
       const matchesItem = itemFilter === 'all' || t.itemId === Number(itemFilter)
-      const matchesWarehouse = warehouseFilter === 'all' || t.warehouseId === Number(warehouseFilter)
+      const matchesWarehouse = currentUser.warehouseId
+        ? t.warehouseId === currentUser.warehouseId
+        : warehouseFilter === 'all' || t.warehouseId === Number(warehouseFilter)
       const matchesStatus = statusFilter === 'all' || t.status === statusFilter
       return matchesItem && matchesWarehouse && matchesStatus
     })
-  }, [typeTransactions, itemFilter, warehouseFilter, statusFilter])
+  }, [typeTransactions, itemFilter, warehouseFilter, statusFilter, currentUser.warehouseId])
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
   const getItemUnit = (itemId: number) => items.find((item) => item.id === itemId)?.unit ?? ''
@@ -350,8 +354,8 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
           </Col>
           <Col xs={12} md={6} lg={3}>
             <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-              <option value="all">All Warehouses</option>
-              {warehouses.map((warehouse) => (
+              {!currentUser.warehouseId && <option value="all">All Warehouses</option>}
+              {(currentUser.warehouseId ? warehouses.filter((w) => w.id === currentUser.warehouseId) : warehouses).map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </option>

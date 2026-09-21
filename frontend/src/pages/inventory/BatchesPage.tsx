@@ -8,6 +8,7 @@ import Badge from '../../components/ui/Badge'
 import { getBatchStatus, isBatchTracked } from '../../data/inventory'
 import type { Batch, BatchStatus } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
+import { useSession } from '../../data/session'
 import type { InventoryContext } from './InventoryLayout'
 
 const statusVariant: Record<BatchStatus, 'success' | 'warning' | 'danger'> = {
@@ -25,11 +26,22 @@ const statusLabel: Record<BatchStatus, string> = {
 export default function BatchesPage() {
   const { items, batches } = useOutletContext<InventoryContext>()
   const { warehouses } = useWarehouses()
+  const { currentUser } = useSession()
 
   const trackedItems = useMemo(() => items.filter((item) => isBatchTracked(item)), [items])
 
+  // User dengan warehouseId di-assign cuma boleh lihat batch warehouse-nya sendiri (lihat User.warehouseId).
+  const warehouseOptions = currentUser.warehouseId
+    ? warehouses.filter((w) => w.id === currentUser.warehouseId)
+    : warehouses
+  const scopedBatches = currentUser.warehouseId
+    ? batches.filter((b) => b.warehouseId === currentUser.warehouseId)
+    : batches
+
   const [itemFilter, setItemFilter] = useState('all')
-  const [warehouseFilter, setWarehouseFilter] = useState('all')
+  const [warehouseFilter, setWarehouseFilter] = useState(
+    currentUser.warehouseId ? String(currentUser.warehouseId) : 'all',
+  )
   const [statusFilter, setStatusFilter] = useState('all')
 
   const getItemName = (itemId: number) => items.find((item) => item.id === itemId)?.name ?? 'Unknown'
@@ -37,7 +49,7 @@ export default function BatchesPage() {
   const getWarehouseName = (warehouseId: number) => warehouses.find((w) => w.id === warehouseId)?.name ?? '-'
 
   const rows = useMemo<Batch[]>(() => {
-    return batches
+    return scopedBatches
       .filter((b) => b.quantity > 0)
       .filter((b) => {
         const matchesItem = itemFilter === 'all' || b.itemId === Number(itemFilter)
@@ -46,16 +58,16 @@ export default function BatchesPage() {
         return matchesItem && matchesWarehouse && matchesStatus
       })
       .sort((a, b) => (a.expiryDate < b.expiryDate ? -1 : 1))
-  }, [batches, itemFilter, warehouseFilter, statusFilter])
+  }, [scopedBatches, itemFilter, warehouseFilter, statusFilter])
 
   const summary = useMemo(() => {
-    const active = batches.filter((b) => b.quantity > 0).map((b) => getBatchStatus(b.expiryDate))
+    const active = scopedBatches.filter((b) => b.quantity > 0).map((b) => getBatchStatus(b.expiryDate))
     return {
       expired: active.filter((s) => s === 'expired').length,
       expiring: active.filter((s) => s === 'expiring').length,
       ok: active.filter((s) => s === 'ok').length,
     }
-  }, [batches])
+  }, [scopedBatches])
 
   const columns = [
     { key: 'item', header: 'Item', render: (row: Batch) => getItemName(row.itemId) },
@@ -121,8 +133,8 @@ export default function BatchesPage() {
           </Col>
           <Col xs={12} md={6} lg={3}>
             <Select label="Warehouse" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-              <option value="all">All Warehouses</option>
-              {warehouses.map((warehouse) => (
+              {!currentUser.warehouseId && <option value="all">All Warehouses</option>}
+              {warehouseOptions.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
                 </option>
