@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Nav } from 'react-bootstrap'
 import { LayoutDashboard, Users, Package, Truck, Warehouse, ClipboardCheck, History, TrendingUp, Settings, ChevronDown, LogOut, Ticket } from './Icons'
 import { useSession } from '../../data/session'
@@ -45,7 +45,8 @@ const menuItems: MenuItem[] = [
 
 export default function Sidebar() {
   const location = useLocation()
-  const { currentUser } = useSession()
+  const navigate = useNavigate()
+  const { currentUser, logout } = useSession()
 
   const [expanded, setExpanded] = useState<string | null>(() => {
     const activeParent = menuItems.find((item) => item.children && location.pathname.startsWith(item.path))
@@ -153,6 +154,10 @@ export default function Sidebar() {
         <button
           type="button"
           className="sidebar-link btn d-flex align-items-center gap-2 text-decoration-none px-0 w-100 bg-transparent border-0"
+          onClick={() => {
+            logout()
+            navigate('/login')
+          }}
         >
           <LogOut size={20} />
           <span>Logout</span>

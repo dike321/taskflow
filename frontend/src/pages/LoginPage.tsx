@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import type { FormEvent, ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Form } from 'react-bootstrap'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
+import { useSession } from '../data/session'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { isAuthenticated, login } = useSession()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   })
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {}
@@ -41,11 +47,16 @@ export default function LoginPage() {
 
     setIsLoading(true)
 
-    // Simulate API call
+    // Simulate API call — tidak ada backend, login cuma mencocokkan email ke mockUsers
     setTimeout(() => {
       setIsLoading(false)
-      navigate('/dashboard')
-    }, 1000)
+      const result = login(formData.email)
+      if (result.success) {
+        navigate('/dashboard')
+      } else {
+        setErrors((prev) => ({ ...prev, email: result.error }))
+      }
+    }, 500)
   }
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -101,10 +112,8 @@ export default function LoginPage() {
         </Form>
 
         <p className="text-center text-muted small mt-4 mb-0">
-          Don't have an account?{' '}
-          <a href="#" className="fw-medium text-decoration-none">
-            Sign up
-          </a>
+          Demo: pakai salah satu email di modul Users (mis. <code>john@example.com</code>), password bebas
+          asalkan minimal 6 karakter — belum ada backend/credential store nyata.
         </p>
       </Card>
     </div>
