@@ -49,6 +49,10 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 
 **Rekomendasi**: kalau alur multi-user lintas sesi memang harus didemokan tanpa fitur switch-user, pertimbangkan pindahkan `SessionProvider` ke posisi terluar dan biarkan data Provider lain tetap ter-mount independen dari status login.
 
+### 5. 🆕 (ditemukan di `test_report_3.md`) RolesPage juga cosmetic-only, sama seperti Users (CRITICAL)
+
+`RolesPage.tsx` punya `useState(mockRoles)` LOKAL sendiri, terpisah dari `mockRoles` yang dipakai `utils/permissions.ts` (`getRoleForUser`, `canApproveAtLevel`, `hasPermission`, `hasModuleAccess`). Akibatnya: mengubah approvalLevel atau toggle permission module lewat UI Roles **terlihat berhasil di tabel** tapi **tidak pernah benar-benar mengubah otorisasi nyata** di manapun. Dibuktikan live saat menguji ROLE-03/ROLE-05 — detail lengkap di `test_report_3.md`.
+
 ---
 
 ## Hasil per Skenario (yang benar-benar dieksekusi live)
@@ -84,16 +88,22 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 | ROLE-01          | ✅ PASS                | Create "Finance Reviewer" dengan 2 module permission berhasil                                                                                                                                                     |
 | ROLE-02          | ✅ PASS                | Submit tanpa nama ditahan validasi (`checkValidity()=false`)                                                                                                                                                    |
 | ROLE-04          | ✅ PASS                | Delete Admin role (masih dipakai 1 user) ditolak dengan pesan jelas — guard`isRoleInUse` bekerja                                                                                                               |
-| ROLE-03, ROLE-05 | ⏭️ NOT LIVE-EXECUTED | approvalLevel edit & permission-toggle instant-effect — perilaku dasarnya sudah tersirat benar dari kode (`getApprovalLevel` baca langsung dari role object), tidak dites end-to-end karena keterbatasan waktu |
+| ROLE-03 | 🔴 GAP CRITICAL BARU | Perubahan approvalLevel via UI tidak berlaku nyata (RolesPage cosmetic-only, sama seperti Users) — lihat Temuan Kritis #5 di atas dan detail di `test_report_3.md` |
+| ROLE-05 | 🔴 GAP CRITICAL BARU | Toggle permission checkbox kena bug arsitektur yang sama — lihat `test_report_3.md` |
 
-**3/5 executed, 3/3 PASS**
+**5/5 executed, 3 PASS + 2 GAP CRITICAL baru (lihat `test_report_3.md`)**
 
 ### 04. Companies CRUD — `04_companies_crud.json`
 
 | ID               | Hasil                  | Catatan                                                                                                                                                     |
 | ---------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | COMP-04          | ✅ PASS                | Delete "PT Sinergi Logistik Nusantara" (dipakai John Doe) ditolak dengan pesan jelas                                                                        |
-| COMP-01,02,03,05 | ⏭️ NOT LIVE-EXECUTED | Pola create/edit/validasi identik dengan yang sudah terbukti di Users & Roles (react-hook + HTML5 required + custom modal, tidak ada indikasi kode berbeda) |
+| COMP-01          | ✅ PASS (lihat `test_report_3.md`) | Create company internal berhasil |
+| COMP-02          | ℹ️ KOREKSI ASUMSI (lihat `test_report_3.md`) | Field link supplier memang optional by design, bukan gap |
+| COMP-03          | ✅ PASS (lihat `test_report_3.md`) | Edit nama company berhasil, ter-update |
+| COMP-05          | ✅ PASS (lihat `test_report_3.md`) | Create company type Supplier dengan link berhasil |
+
+**5/5 executed** — detail lengkap di `test_report_3.md`
 
 ### 05. Suppliers CRUD — `05_suppliers_crud.json`
 
@@ -101,14 +111,18 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 | ------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SUPP-04       | ✅ PASS                | Delete "PT Alat Tulis Sejahtera" ditolak — guard bekerja (pesan sebenarnya "masih dipakai di riwayat transaksi Stock In", bukan "dipakai Company" seperti dugaan awal di JSON — guard-nya tetap valid, cuma alasan spesifiknya beda dari hipotesis) |
 | SUPP-05       | ✅ PASS                | Delete "PT Consumable Nusantara" (tidak direferensikan) berhasil, baris hilang dari tabel                                                                                                                                                             |
-| SUPP-01,02,03 | ⏭️ NOT LIVE-EXECUTED | Pola CRUD identik dengan yang sudah terbukti                                                                                                                                                                                                          |
+| SUPP-01       | ✅ PASS (lihat `test_report_3.md`) | Create supplier baru berhasil |
+| SUPP-02       | ✅ PASS (lihat `test_report_3.md`) | Submit tanpa nama ditahan validasi |
+| SUPP-03       | ✅ PASS (lihat `test_report_3.md`) | Toggle status Active↔Inactive berhasil |
 
 ### 06. Warehouse Scoping — `06_warehouses_scoping.json`
 
 | ID                  | Hasil                  | Catatan                                                                                                                                                                                                                        |
 | ------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | WH-02               | ✅ PASS                | Alice Brown (Warehouse Staff, warehouseId=1) di halaman Stock History: filter Warehouse ter-lock ke "Gudang Pusat Jakarta" saja (opsi "All Warehouses"/gudang lain hilang dari dropdown), data yang tampil cuma dari gudangnya |
-| WH-01, WH-03, WH-04 | ⏭️ NOT LIVE-EXECUTED | WH-01 (Admin lihat semua) tersirat benar dari WH-02 (kontras langsung teramati: begitu switch balik ke John Doe/Budi, dropdown warehouse penuh lagi)                                                                           |
+| WH-01               | ✅ PASS (lihat `test_report_3.md`) | Admin melihat opsi "All Warehouses" di semua filter/form |
+| WH-03               | ✅ PASS (lihat `test_report_3.md`) | Form Stock In Alice hanya berisi warehouse miliknya, tidak ada jalur submit ke gudang lain |
+| WH-04               | ✅ PASS (lihat `test_report_3.md`) | Approvals menampilkan transaksi lintas gudang tanpa restriksi warehouse |
 
 ### 10. Stock In (Approval Threshold) — `10_stock_in.json`
 
@@ -116,42 +130,39 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 | ------------ | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | SIN-01       | ✅ PASS                | Stock In 50 rim (< threshold 100) → langsung`approved`, stok bertambah                                              |
 | SIN-02       | ✅ PASS                | Stock In 150 rim (> threshold 100, < escalation 500) → status`pending`, baru `approved` setelah di-approve manual |
-| SIN-03,04,05 | ⏭️ NOT LIVE-EXECUTED | Validasi qty/required field sudah terbukti pola sama di modul lain                                                     |
+| SIN-03,04    | ✅ PASS (lihat `test_report_3.md`) | Submit form kosong → "Quantity must be greater than 0" |
+| SIN-05       | ✅ PASS (lihat `test_report_3.md`) | 3 karton (conversion factor 5) → tersimpan akurat "15 rim (3 karton)" |
 
 ### 15. Multi-Level Approval — `15_approvals_multilevel.json`
 
 | ID              | Hasil                  | Catatan                                                                                                                                                                                                                                                                                                                                     |
 | --------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | APR-02          | 🔴 GAP CRITICAL        | Self-approval**tidak diblokir** — lihat Temuan Kritis #2                                                                                                                                                                                                                                                                             |
-| APR-01,03,04,05 | ⏭️ NOT LIVE-EXECUTED | Flow 2-level (pending → pending_level2 → approved) sudah diverifikasi logikanya lewat pembacaan kode (`handleApprove` di `ApprovalsPage.tsx`) tapi belum dites end-to-end dengan approver level 1 & level 2 yang berbeda dan bukan si pembuat, karena keterbatasan waktu setelah menemukan gap #2 yang lebih prioritas untuk didalami |
+| APR-01          | ✅ PASS (lihat `test_report_3.md`) | Level-1 approve → status "Pending Final" |
+| APR-03          | ✅ PASS (lihat `test_report_3.md`) | Level-2 final approve oleh approver berbeda → "approved" |
+| APR-04          | ✅ PASS (lihat `test_report_3.md`) | Approver level-1-only tidak bisa Final Approve |
+| APR-05          | ✅ PASS (lihat `test_report_3.md`) | Reject → status "rejected" instan (tanpa capture alasan) |
 
 ### 16. Supplier Portal — `16_supplier_portal.json`
 
 | ID                      | Hasil                  | Catatan                                                                                                                                                                                                     |
 | ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SUPP-PORTAL-03          | 🔴 GAP CRITICAL        | Supplier (Budi Santoso) berhasil akses`/inventory/history` dan `/users` langsung — lihat Temuan Kritis #1. Ini scenario "bad" yang **seharusnya** ditolak, tapi ternyata **tidak ditolak** |
-| SUPP-PORTAL-01,02,04,05 | ⏭️ NOT LIVE-EXECUTED | Perlu data PO/shipment aktual untuk company Budi yang belum di-generate di mock data; scoping tampilan Supplier Portal itu sendiri (bukan route guard-nya) belum dites langsung                             |
+| SUPP-PORTAL-01          | ✅ PASS (lihat `test_report_3.md`) | Budi hanya lihat profil & 2 pengiriman company-nya sendiri |
+| SUPP-PORTAL-02          | ✅ PASS (lihat `test_report_3.md`) | Confirm Shipment berhasil, status berubah |
+| SUPP-PORTAL-04          | ✅ PASS by design (lihat `test_report_3.md`) | Tidak ada jalur UI untuk akses PO supplier lain |
+| SUPP-PORTAL-05          | ✅ PASS (lihat `test_report_3.md`) | Admin melihat data kedua supplier |
 
 ---
 
-## Modul yang skenarionya sudah ditulis lengkap di JSON tapi belum dieksekusi live
+## Status penuntasan (update)
 
-Karena besarnya cakupan (~95 skenario di 20 file) dan waktu/context session, modul berikut **skenarionya sudah lengkap tertulis** di `TEST_JSON/scenarios/*.json` (07–09, 11–14, 17–20) siap dieksekusi, tapi belum benar-benar diklik satu-per-satu di browser pada pass ini:
+**Semua skenario ⏭️ di file ini sudah dieksekusi live** — lihat `test_report_2.md` (modul 07-09, 11-14, 17-19) dan `test_report_3.md` (semua sisa ⏭️ dari file ini + file 2, termasuk skenario #20 full E2E flow). Tidak ada lagi skenario dari `TEST_JSON/scenarios/*.json` yang belum disentuh sama sekali.
 
-- 07-08 Tickets (CRUD, Reports, Notifications)
-- 09 Inventory Items CRUD
-- 11-13 Stock Out/Transfer/Opname
-- 14 Batches/FEFO
-- 17 Settings (General/Notifications/My Profile)
-- 18 Inventory Reports
-- 19 Activity Log
-- 20 Full E2E flow (20 langkah lintas modul)
-
-Mengingat **Temuan Kritis #1 (tidak ada route guard)** berlaku di SELURUH aplikasi (bukan cuma Inventory/Users), kemungkinan besar berlaku juga untuk modul-modul di atas — tapi ini asumsi berdasarkan pola arsitektur yang sama (`RequireAuth` generik untuk semua route), belum dibuktikan satu-per-satu untuk tiap modul.
-
-## Rekomendasi Prioritas Perbaikan
+## Rekomendasi Prioritas Perbaikan (lihat versi final gabungan di `test_report_3.md`)
 
 1. **Route guard per-module** (Temuan #1) — prioritas tertinggi, ini gap keamanan/otorisasi nyata
-2. **Self-approval block** (Temuan #2) — inti dari fitur maker-checker yang sudah dibangun, saat ini tidak berfungsi
-3. **UsersProvider terpusat** (Temuan #3) — supaya CRUD Users benar-benar berefek ke seluruh aplikasi
-4. **Guard referential integrity untuk delete User** (USER-05) — konsisten dengan Roles/Companies/Suppliers
+2. **🆕 RolesPage cosmetic-only** (Temuan #5, ditemukan di `test_report_3.md`) — levelnya sama kritis dengan #1
+3. **Self-approval block** (Temuan #2) — inti dari fitur maker-checker yang sudah dibangun, saat ini tidak berfungsi
+4. **UsersProvider terpusat** (Temuan #3) — supaya CRUD Users benar-benar berefek ke seluruh aplikasi
+5. **Guard referential integrity untuk delete User** (USER-05) — konsisten dengan Roles/Companies/Suppliers
