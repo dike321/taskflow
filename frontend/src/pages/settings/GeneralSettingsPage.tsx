@@ -14,7 +14,8 @@ import { parseIntInput } from '../../utils/number'
 export default function GeneralSettingsPage() {
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
-  const { approvalThreshold, setApprovalThreshold } = useApprovalSettings()
+  const { approvalThreshold, setApprovalThreshold, escalationThreshold, setEscalationThreshold } =
+    useApprovalSettings()
   const canEdit = hasPermission(currentUser, 'settings', 'edit')
 
   const [formData, setFormData] = useState<CompanyProfile>(mockCompanyProfile)
@@ -22,6 +23,10 @@ export default function GeneralSettingsPage() {
 
   const [thresholdInput, setThresholdInput] = useState(approvalThreshold)
   const [thresholdSaved, setThresholdSaved] = useState(false)
+
+  const [escalationInput, setEscalationInput] = useState(escalationThreshold)
+  const [escalationError, setEscalationError] = useState('')
+  const [escalationSaved, setEscalationSaved] = useState(false)
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -48,6 +53,25 @@ export default function GeneralSettingsPage() {
     })
     setThresholdSaved(true)
     setTimeout(() => setThresholdSaved(false), 2000)
+  }
+
+  const handleEscalationSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (escalationInput <= approvalThreshold) {
+      setEscalationError('Harus lebih besar dari Approval Threshold di atas')
+      return
+    }
+    setEscalationError('')
+    setEscalationThreshold(escalationInput)
+    logActivity({
+      userId: currentUser.id,
+      userName: currentUser.name,
+      action: 'update',
+      module: 'settings',
+      description: `Updated escalation threshold to ${escalationInput} units`,
+    })
+    setEscalationSaved(true)
+    setTimeout(() => setEscalationSaved(false), 2000)
   }
 
   return (
@@ -123,6 +147,37 @@ export default function GeneralSettingsPage() {
             <div className="d-flex align-items-center gap-3 pt-2">
               <Button type="submit">Save Changes</Button>
               {thresholdSaved && <span className="text-success small">Saved</span>}
+            </div>
+          )}
+        </form>
+      </Card>
+
+      <div className="mt-4 mb-3">
+        <h2 className="h5 fw-bold mb-1">Escalation (approval berjenjang)</h2>
+        <p className="text-muted small mb-0">
+          Di atas jumlah ini, transaksi butuh 2 level approval berurutan — role ber-approval-level 1 (mis.
+          Warehouse Supervisor) dulu, baru role ber-approval-level 2 (mis. Admin) untuk sign-off final
+        </p>
+      </div>
+
+      <Card>
+        <form onSubmit={handleEscalationSubmit} className="d-flex flex-column gap-3">
+          <Input
+            label="Escalation Threshold (units)"
+            type="text"
+            inputMode="numeric"
+            value={escalationInput}
+            onChange={(e) => {
+              setEscalationInput(parseIntInput(e.target.value))
+              if (escalationError) setEscalationError('')
+            }}
+            error={escalationError}
+            disabled={!canEdit}
+          />
+          {canEdit && (
+            <div className="d-flex align-items-center gap-3 pt-2">
+              <Button type="submit">Save Changes</Button>
+              {escalationSaved && <span className="text-success small">Saved</span>}
             </div>
           )}
         </form>

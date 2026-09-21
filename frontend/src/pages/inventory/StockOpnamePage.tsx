@@ -23,10 +23,17 @@ import type { InventoryContext } from './InventoryLayout'
 
 const today = () => new Date().toISOString().split('T')[0]
 
-const statusVariant: Record<StockOpname['status'], 'success' | 'warning' | 'danger'> = {
+const statusVariant: Record<StockOpname['status'], 'success' | 'warning' | 'danger' | 'info'> = {
   approved: 'success',
   pending: 'warning',
+  pending_level2: 'info',
   rejected: 'danger',
+}
+const statusLabel: Record<StockOpname['status'], string> = {
+  approved: 'approved',
+  pending: 'pending',
+  pending_level2: 'pending final',
+  rejected: 'rejected',
 }
 
 export default function StockOpnamePage() {
@@ -34,14 +41,18 @@ export default function StockOpnamePage() {
     useOutletContext<InventoryContext>()
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
-  const { approvalThreshold } = useApprovalSettings()
+  const { approvalThreshold, escalationThreshold } = useApprovalSettings()
   const { warehouses } = useWarehouses()
 
   const canCreate = hasPermission(currentUser, 'inventory.opname', 'create')
   const canApprove = hasPermission(currentUser, 'inventory.opname', 'approve')
 
   const activeUsers = mockUsers.filter((user) => user.status === 'active')
-  const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'active')
+  // Staff dengan warehouseId di-assign cuma boleh opname warehouse itu (lihat User.warehouseId).
+  const activeWarehouses = warehouses.filter(
+    (warehouse) =>
+      warehouse.status === 'active' && (!currentUser.warehouseId || warehouse.id === currentUser.warehouseId),
+  )
 
   const buildEmptyFormData = () => ({
     itemId: items[0]?.id ?? 0,
@@ -101,6 +112,7 @@ export default function StockOpnamePage() {
 
     const withinThreshold = Math.abs(difference) <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
+    const requiresSecondApproval = !approvedNow && Math.abs(difference) > escalationThreshold
 
     const newOpname: StockOpname = {
       id: Math.max(...stockOpnames.map((o) => o.id), 0) + 1,
@@ -112,6 +124,7 @@ export default function StockOpnamePage() {
       date: formData.date,
       picId: formData.picId,
       status: approvedNow ? 'approved' : 'pending',
+      requiresSecondApproval: requiresSecondApproval || undefined,
       approvedBy: approvedNow ? currentUser.id : undefined,
       approvedAt: approvedNow ? today() : undefined,
       note: formData.note || undefined,
@@ -162,7 +175,7 @@ export default function StockOpnamePage() {
     {
       key: 'status',
       header: 'Status',
-      render: (o: StockOpname) => <Badge variant={statusVariant[o.status]}>{o.status}</Badge>,
+      render: (o: StockOpname) => <Badge variant={statusVariant[o.status]}>{statusLabel[o.status]}</Badge>,
     },
   ]
 
@@ -203,6 +216,7 @@ export default function StockOpnamePage() {
             <Select label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
+              <option value="pending_level2">Pending Final</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </Select>
@@ -281,6 +295,12 @@ export default function StockOpnamePage() {
           {!canApprove && (
             <p className="text-muted small mb-0">
               Penyesuaian ini akan berstatus <strong>Pending</strong> sampai disetujui oleh Supervisor.
+            </p>
+          )}
+          {Math.abs(formData.physicalQty - currentSystemQty) > escalationThreshold && (
+            <p className="text-muted small mb-0">
+              Selisih di atas ambang eskalasi ({escalationThreshold} unit) — penyesuaian ini butuh{' '}
+              <strong>2 level approval berurutan</strong> (Supervisor lalu Admin).
             </p>
           )}
           <div className="d-flex gap-3 pt-2">

@@ -59,19 +59,26 @@ export function useNotificationPreferences() {
 }
 
 const DEFAULT_APPROVAL_THRESHOLD = 100
+/** Di atas ambang ini, transaksi butuh approval berjenjang (level 1 lalu level 2) alih-alih 1x approve. Harus > approvalThreshold. */
+const DEFAULT_ESCALATION_THRESHOLD = 500
 
 interface ApprovalSettingsContextValue {
   approvalThreshold: number
   setApprovalThreshold: Dispatch<SetStateAction<number>>
+  escalationThreshold: number
+  setEscalationThreshold: Dispatch<SetStateAction<number>>
 }
 
 const ApprovalSettingsContext = createContext<ApprovalSettingsContextValue | undefined>(undefined)
 
 export function ApprovalSettingsProvider({ children }: { children: ReactNode }) {
   const [approvalThreshold, setApprovalThreshold] = useState<number>(DEFAULT_APPROVAL_THRESHOLD)
+  const [escalationThreshold, setEscalationThreshold] = useState<number>(DEFAULT_ESCALATION_THRESHOLD)
 
   return (
-    <ApprovalSettingsContext.Provider value={{ approvalThreshold, setApprovalThreshold }}>
+    <ApprovalSettingsContext.Provider
+      value={{ approvalThreshold, setApprovalThreshold, escalationThreshold, setEscalationThreshold }}
+    >
       {children}
     </ApprovalSettingsContext.Provider>
   )

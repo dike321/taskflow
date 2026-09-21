@@ -41,10 +41,17 @@ const typeVariant: Record<HistoryType, 'success' | 'danger' | 'info' | 'warning'
   opname: 'warning',
 }
 
-const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger'> = {
+const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger' | 'info'> = {
   approved: 'success',
   pending: 'warning',
+  pending_level2: 'info',
   rejected: 'danger',
+}
+const statusLabel: Record<StockTransaction['status'], string> = {
+  approved: 'approved',
+  pending: 'pending',
+  pending_level2: 'pending final',
+  rejected: 'rejected',
 }
 
 export default function StockHistoryPage() {
@@ -194,7 +201,7 @@ export default function StockHistoryPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (row: HistoryRow) => <Badge variant={statusVariant[row.status]}>{row.status}</Badge>,
+      render: (row: HistoryRow) => <Badge variant={statusVariant[row.status]}>{statusLabel[row.status]}</Badge>,
     },
   ]
 
@@ -244,6 +251,7 @@ export default function StockHistoryPage() {
             <Select label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
+              <option value="pending_level2">Pending Final</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </Select>

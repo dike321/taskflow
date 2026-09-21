@@ -13,7 +13,7 @@ import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
 import { useSuppliers } from '../data/suppliers'
 import { useWarehouses } from '../data/warehouses'
-import { hasPermission } from '../utils/permissions'
+import { canApproveAtLevel } from '../utils/permissions'
 
 const today = () => new Date().toISOString().split('T')[0]
 
@@ -21,6 +21,15 @@ const typeVariant: Record<StockTransactionType, 'success' | 'danger' | 'info'> =
   in: 'success',
   out: 'danger',
   transfer: 'info',
+}
+
+const approvalStatusLabel: Record<'pending' | 'pending_level2', string> = {
+  pending: 'Pending',
+  pending_level2: 'Pending Final',
+}
+const approvalStatusVariant: Record<'pending' | 'pending_level2', 'warning' | 'info'> = {
+  pending: 'warning',
+  pending_level2: 'info',
 }
 
 export default function ApprovalsPage() {
@@ -34,7 +43,10 @@ export default function ApprovalsPage() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [itemFilter, setItemFilter] = useState('all')
 
-  const pendingTransactions = useMemo(() => transactions.filter((t) => t.status === 'pending'), [transactions])
+  const pendingTransactions = useMemo(
+    () => transactions.filter((t) => t.status === 'pending' || t.status === 'pending_level2'),
+    [transactions],
+  )
 
   const filteredTransactions = useMemo(() => {
     return pendingTransactions
@@ -93,6 +105,26 @@ export default function ApprovalsPage() {
   }
 
   const handleApprove = (transaction: StockTransaction) => {
+    if (transaction.status === 'pending' && transaction.requiresSecondApproval) {
+      // Level 1 dari transaksi ter-eskalasi: catat approver level 1, escalate ke pending_level2, stok belum berubah.
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === transaction.id
+            ? { ...t, status: 'pending_level2', level1ApprovedBy: currentUser.id, level1ApprovedAt: today() }
+            : t,
+        ),
+      )
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'approve',
+        module: moduleKeyFor(transaction.type),
+        description: `Level 1 approved ${labelFor(transaction.type)} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) — ${warehouseLabel(transaction)}, menunggu final approval`,
+      })
+      return
+    }
+
+    // Approval biasa (1 level), atau final approval (level 2) dari transaksi yang sudah lolos level 1.
     setTransactions((prev) =>
       prev.map((t) =>
         t.id === transaction.id ? { ...t, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : t,
@@ -105,7 +137,7 @@ export default function ApprovalsPage() {
       userName: currentUser.name,
       action: 'approve',
       module: moduleKeyFor(transaction.type),
-      description: `Approved ${labelFor(transaction.type)} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) — ${warehouseLabel(transaction)}`,
+      description: `${transaction.status === 'pending_level2' ? 'Final approved (level 2)' : 'Approved'} ${labelFor(transaction.type)} for ${getItemName(transaction.itemId)} (${transaction.quantity} ${getItemUnit(transaction.itemId)}) — ${warehouseLabel(transaction)}`,
     })
   }
 
@@ -124,7 +156,10 @@ export default function ApprovalsPage() {
     })
   }
 
-  const pendingOpnames = useMemo(() => stockOpnames.filter((o) => o.status === 'pending'), [stockOpnames])
+  const pendingOpnames = useMemo(
+    () => stockOpnames.filter((o) => o.status === 'pending' || o.status === 'pending_level2'),
+    [stockOpnames],
+  )
 
   const filteredOpnames = useMemo(() => {
     return pendingOpnames
@@ -133,6 +168,24 @@ export default function ApprovalsPage() {
   }, [pendingOpnames, itemFilter])
 
   const handleApproveOpname = (opname: StockOpname) => {
+    if (opname.status === 'pending' && opname.requiresSecondApproval) {
+      setStockOpnames((prev) =>
+        prev.map((o) =>
+          o.id === opname.id
+            ? { ...o, status: 'pending_level2', level1ApprovedBy: currentUser.id, level1ApprovedAt: today() }
+            : o,
+        ),
+      )
+      logActivity({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        action: 'approve',
+        module: 'inventory.opname',
+        description: `Level 1 approved Stock Opname for ${getItemName(opname.itemId)} at ${getWarehouseName(opname.warehouseId)} (diff ${opname.difference > 0 ? '+' : ''}${opname.difference} ${getItemUnit(opname.itemId)}), menunggu final approval`,
+      })
+      return
+    }
+
     setStockOpnames((prev) =>
       prev.map((o) =>
         o.id === opname.id ? { ...o, status: 'approved', approvedBy: currentUser.id, approvedAt: today() } : o,
@@ -144,7 +197,7 @@ export default function ApprovalsPage() {
       userName: currentUser.name,
       action: 'approve',
       module: 'inventory.opname',
-      description: `Approved Stock Opname for ${getItemName(opname.itemId)} at ${getWarehouseName(opname.warehouseId)} (diff ${opname.difference > 0 ? '+' : ''}${opname.difference} ${getItemUnit(opname.itemId)})`,
+      description: `${opname.status === 'pending_level2' ? 'Final approved (level 2)' : 'Approved'} Stock Opname for ${getItemName(opname.itemId)} at ${getWarehouseName(opname.warehouseId)} (diff ${opname.difference > 0 ? '+' : ''}${opname.difference} ${getItemUnit(opname.itemId)})`,
     })
   }
 
@@ -185,21 +238,39 @@ export default function ApprovalsPage() {
     },
     { key: 'pic', header: 'PIC', render: (o: StockOpname) => getUserName(o.picId) },
     {
+      key: 'status',
+      header: 'Status',
+      render: (o: StockOpname) => (
+        <div>
+          <Badge variant={approvalStatusVariant[o.status as 'pending' | 'pending_level2']}>
+            {approvalStatusLabel[o.status as 'pending' | 'pending_level2']}
+          </Badge>
+          {o.status === 'pending_level2' && (
+            <div className="text-muted small mt-1">L1: {getUserName(o.level1ApprovedBy)}</div>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
-      render: (o: StockOpname) =>
-        hasPermission(currentUser, 'inventory.opname', 'approve') ? (
+      render: (o: StockOpname) => {
+        const canAct =
+          o.status === 'pending_level2'
+            ? canApproveAtLevel(currentUser, 'inventory.opname', 2) && o.level1ApprovedBy !== currentUser.id
+            : canApproveAtLevel(currentUser, 'inventory.opname', 1)
+        if (!canAct) return <span className="text-muted small">—</span>
+        return (
           <div className="d-flex align-items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => handleApproveOpname(o)}>
-              Approve
+              {o.status === 'pending_level2' ? 'Final Approve' : 'Approve'}
             </Button>
             <Button variant="danger" size="sm" onClick={() => handleRejectOpname(o)}>
               Reject
             </Button>
           </div>
-        ) : (
-          <span className="text-muted small">—</span>
-        ),
+        )
+      },
     },
   ]
 
@@ -227,21 +298,40 @@ export default function ApprovalsPage() {
       render: (t: StockTransaction) => (t.type === 'in' ? getSupplierName(t.supplierId) : (t.reference ?? '-')),
     },
     {
+      key: 'status',
+      header: 'Status',
+      render: (t: StockTransaction) => (
+        <div>
+          <Badge variant={approvalStatusVariant[t.status as 'pending' | 'pending_level2']}>
+            {approvalStatusLabel[t.status as 'pending' | 'pending_level2']}
+          </Badge>
+          {t.status === 'pending_level2' && (
+            <div className="text-muted small mt-1">L1: {getUserName(t.level1ApprovedBy)}</div>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
-      render: (t: StockTransaction) =>
-        hasPermission(currentUser, moduleKeyFor(t.type), 'approve') ? (
+      render: (t: StockTransaction) => {
+        const module = moduleKeyFor(t.type)
+        const canAct =
+          t.status === 'pending_level2'
+            ? canApproveAtLevel(currentUser, module, 2) && t.level1ApprovedBy !== currentUser.id
+            : canApproveAtLevel(currentUser, module, 1)
+        if (!canAct) return <span className="text-muted small">—</span>
+        return (
           <div className="d-flex align-items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => handleApprove(t)}>
-              Approve
+              {t.status === 'pending_level2' ? 'Final Approve' : 'Approve'}
             </Button>
             <Button variant="danger" size="sm" onClick={() => handleReject(t)}>
               Reject
             </Button>
           </div>
-        ) : (
-          <span className="text-muted small">—</span>
-        ),
+        )
+      },
     },
   ]
 

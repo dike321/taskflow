@@ -5,6 +5,13 @@ export interface Role {
   name: string
   description: string
   permissions: Record<string, PermissionAction[]>
+  /**
+   * Untuk approval berjenjang: transaksi di atas escalation threshold butuh approve dari role
+   * ber-approvalLevel makin tinggi secara berurutan (level 1 dulu, baru level 2, dst).
+   * Role tanpa field ini / undefined dianggap level 0 — tidak bisa approve final sekalipun
+   * punya permission `approve` di module tersebut.
+   */
+  approvalLevel?: number
 }
 
 export interface ModuleDef {
@@ -39,6 +46,7 @@ export const mockRoles: Role[] = [
     id: 1,
     name: 'Admin',
     description: 'Akses penuh ke seluruh sistem',
+    approvalLevel: 2,
     permissions: {
       dashboard: ['view'],
       users: ['view', 'create', 'edit', 'delete'],
@@ -80,6 +88,7 @@ export const mockRoles: Role[] = [
     id: 3,
     name: 'Warehouse Supervisor',
     description: 'Approve transaksi, kelola master barang',
+    approvalLevel: 1,
     permissions: {
       dashboard: ['view'],
       'inventory.items': ['view', 'create', 'edit'],

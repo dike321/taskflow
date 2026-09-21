@@ -7,7 +7,7 @@ import { AlertTriangle, Bell, ClipboardCheck, MessageSquare, Search, Ticket, Use
 import { SIDEBAR_WIDTH } from './Sidebar'
 import { useSession } from '../../data/session'
 import { mockUsers } from '../../data/users'
-import { getRoleForUser, hasModuleAccess, hasPermission } from '../../utils/permissions'
+import { canApproveAtLevel, getRoleForUser, hasModuleAccess, hasPermission } from '../../utils/permissions'
 import { getBatchStatus, getStockQuantity, useInventoryData } from '../../data/inventory'
 import type { StockTransactionType } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
@@ -53,9 +53,22 @@ export default function Header() {
             }))
         : []
 
+    const canActOnPending = (
+      status: 'pending' | 'pending_level2',
+      module: string,
+      level1ApprovedBy: number | undefined,
+    ) =>
+      status === 'pending'
+        ? canApproveAtLevel(currentUser, module, 1)
+        : canApproveAtLevel(currentUser, module, 2) && level1ApprovedBy !== currentUser.id
+
     const pendingApprovals: NotificationItem[] = preferences.approvalPendingAlert
       ? transactions
-          .filter((t) => t.status === 'pending' && hasPermission(currentUser, moduleKeyForType(t.type), 'approve'))
+          .filter(
+            (t) =>
+              (t.status === 'pending' || t.status === 'pending_level2') &&
+              canActOnPending(t.status, moduleKeyForType(t.type), t.level1ApprovedBy),
+          )
           .map((t) => {
             const item = items.find((i) => i.id === t.itemId)
             const warehouseLabel =
@@ -66,7 +79,7 @@ export default function Header() {
               id: `pending-${t.id}`,
               icon: ClipboardCheck,
               variant: 'warning' as const,
-              title: `${labelForType(t.type)} pending: ${item?.name ?? 'Unknown'}`,
+              title: `${labelForType(t.type)} ${t.status === 'pending_level2' ? 'awaiting final approval' : 'pending'}: ${item?.name ?? 'Unknown'}`,
               description: `${t.quantity} ${item?.unit ?? ''} · ${warehouseLabel}`,
               to: '/approvals',
             }
@@ -75,14 +88,18 @@ export default function Header() {
 
     const pendingOpnames: NotificationItem[] = preferences.approvalPendingAlert
       ? stockOpnames
-          .filter((o) => o.status === 'pending' && hasPermission(currentUser, 'inventory.opname', 'approve'))
+          .filter(
+            (o) =>
+              (o.status === 'pending' || o.status === 'pending_level2') &&
+              canActOnPending(o.status, 'inventory.opname', o.level1ApprovedBy),
+          )
           .map((o) => {
             const item = items.find((i) => i.id === o.itemId)
             return {
               id: `pending-opname-${o.id}`,
               icon: ClipboardCheck,
               variant: 'warning' as const,
-              title: `Stock Opname pending: ${item?.name ?? 'Unknown'}`,
+              title: `Stock Opname ${o.status === 'pending_level2' ? 'awaiting final approval' : 'pending'}: ${item?.name ?? 'Unknown'}`,
               description: `${o.difference > 0 ? '+' : ''}${o.difference} ${item?.unit ?? ''} · ${getWarehouseName(o.warehouseId)}`,
               to: '/approvals',
             }

@@ -96,6 +96,13 @@ export function adjustWarehouseStock(
 
 export type StockTransactionType = 'in' | 'out' | 'transfer'
 
+/**
+ * Approval berjenjang: transaksi di atas escalation threshold lewat 'pending' -> 'pending_level2' -> 'approved',
+ * butuh approve dari role approvalLevel 1 dulu baru approvalLevel 2 (lihat utils/permissions.ts). Transaksi di
+ * bawah threshold lewati 'pending_level2', langsung 'pending' -> 'approved' dengan 1x approve seperti sebelumnya.
+ */
+export type ApprovalStatus = 'pending' | 'pending_level2' | 'approved' | 'rejected'
+
 export interface StockTransaction {
   id: number
   itemId: number
@@ -103,7 +110,13 @@ export interface StockTransaction {
   quantity: number
   date: string
   picId: number
-  status: 'pending' | 'approved' | 'rejected'
+  status: ApprovalStatus
+  /** Ditentukan sekali saat transaksi dibuat (quantity > escalationThreshold saat itu) — tidak berubah retroaktif kalau threshold di-update belakangan. */
+  requiresSecondApproval?: boolean
+  /** Approval level 1 (Supervisor). Kalau requiresSecondApproval false, transaksi langsung ke approvedBy/approvedAt tanpa lewat field ini. */
+  level1ApprovedBy?: number
+  level1ApprovedAt?: string
+  /** Approval final — level 1 (transaksi biasa) atau level 2 (transaksi ter-eskalasi). */
   approvedBy?: number
   approvedAt?: string
   reference?: string
@@ -255,7 +268,10 @@ export interface StockOpname {
   difference: number
   date: string
   picId: number
-  status: 'pending' | 'approved' | 'rejected'
+  status: ApprovalStatus
+  requiresSecondApproval?: boolean
+  level1ApprovedBy?: number
+  level1ApprovedAt?: string
   approvedBy?: number
   approvedAt?: string
   note?: string

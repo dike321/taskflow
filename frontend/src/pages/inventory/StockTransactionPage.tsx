@@ -36,10 +36,17 @@ interface StockTransactionPageProps {
 
 const today = () => new Date().toISOString().split('T')[0]
 
-const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger'> = {
+const statusVariant: Record<StockTransaction['status'], 'success' | 'warning' | 'danger' | 'info'> = {
   approved: 'success',
   pending: 'warning',
+  pending_level2: 'info',
   rejected: 'danger',
+}
+const statusLabel: Record<StockTransaction['status'], string> = {
+  approved: 'approved',
+  pending: 'pending',
+  pending_level2: 'pending final',
+  rejected: 'rejected',
 }
 
 export default function StockTransactionPage({ type }: StockTransactionPageProps) {
@@ -48,7 +55,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
   const { suppliers } = useSuppliers()
-  const { approvalThreshold } = useApprovalSettings()
+  const { approvalThreshold, escalationThreshold } = useApprovalSettings()
   const { warehouses } = useWarehouses()
 
   const moduleKey = type === 'in' ? 'inventory.stockIn' : 'inventory.stockOut'
@@ -58,7 +65,11 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
 
   const activeUsers = mockUsers.filter((user) => user.status === 'active')
   const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'active')
-  const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'active')
+  // Staff dengan warehouseId di-assign cuma boleh pilih warehouse itu (lihat User.warehouseId).
+  const activeWarehouses = warehouses.filter(
+    (warehouse) =>
+      warehouse.status === 'active' && (!currentUser.warehouseId || warehouse.id === currentUser.warehouseId),
+  )
 
   const buildEmptyFormData = () => {
     const defaultItem = items[0]
@@ -196,6 +207,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
 
     const withinThreshold = baseQuantity <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
+    const requiresSecondApproval = !approvedNow && baseQuantity > escalationThreshold
 
     const attachments = filesToAttachments(files)
 
@@ -209,6 +221,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       date: formData.date,
       picId: formData.picId,
       status: approvedNow ? 'approved' : 'pending',
+      requiresSecondApproval: requiresSecondApproval || undefined,
       approvedBy: approvedNow ? currentUser.id : undefined,
       approvedAt: approvedNow ? today() : undefined,
       reference: formData.reference || undefined,
@@ -308,7 +321,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
     {
       key: 'status',
       header: 'Status',
-      render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{t.status}</Badge>,
+      render: (t: StockTransaction) => <Badge variant={statusVariant[t.status]}>{statusLabel[t.status]}</Badge>,
     },
   ]
 
@@ -349,6 +362,7 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             <Select label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
+              <option value="pending_level2">Pending Final</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </Select>
@@ -564,6 +578,12 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
             <p className="text-muted small mb-0">
               Quantity melebihi ambang batas approval ({approvalThreshold} unit), transaksi ini akan tetap berstatus{' '}
               <strong>Pending</strong> walau Anda punya izin approve.
+            </p>
+          )}
+          {baseQuantityPreview > escalationThreshold && (
+            <p className="text-muted small mb-0">
+              Quantity di atas ambang eskalasi ({escalationThreshold} unit) — transaksi ini butuh{' '}
+              <strong>2 level approval berurutan</strong> (Supervisor lalu Admin).
             </p>
           )}
           <div className="d-flex gap-3 pt-2">

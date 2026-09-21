@@ -24,10 +24,13 @@ export interface Role {
   name: string
   description?: string
   permissions: Record<string, PermissionAction[]>   // key = module key (lihat daftar di bawah), value = aksi yang diizinkan
+  approvalLevel?: number   // [Selesai] untuk approval berjenjang Inventory — lihat docs/inventory-module-plan.md roadmap #2
 }
 ```
 
 Tidak semua aksi relevan untuk semua module — misal `approve` hanya bermakna untuk `inventory.stockOut`/`inventory.stockIn`, `export` untuk module yang punya laporan. UI Role Management nanti hanya menampilkan aksi yang relevan per module (lihat bagian "Halaman Role Management").
+
+`approvalLevel` **[Selesai]** — ditambahkan belakangan, khusus dipakai fitur approval berjenjang di Inventory (`canApproveAtLevel()` di `utils/permissions.ts`). Admin=2, Warehouse Supervisor=1, Warehouse Staff=undefined (tidak bisa approve apapun). **Belum ada UI-nya di halaman Role Management** — field ini cuma bisa di-set langsung di `mockRoles`, bukan lewat form Add/Edit Role, karena scope awal fitur ini dibatasi ke alur approval saja.
 
 ### Daftar Module Key [Selesai — sudah tumbuh jauh dari rencana awal]
 

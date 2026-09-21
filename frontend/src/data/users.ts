@@ -7,6 +7,8 @@ export interface User {
   roleId: number
   status: 'active' | 'inactive'
   createdAt: string
+  /** Kalau diisi, user cuma boleh pilih warehouse ini saat bikin transaksi (Stock In/Out/Transfer/Opname). Warehouse.id di data/warehouses.tsx. Biasanya cuma dipakai untuk Warehouse Staff — Admin/Supervisor kosongkan supaya bisa akses semua warehouse. */
+  warehouseId?: number
 }
 
 export const DEPARTMENTS = ['Management', 'Warehouse', 'Finance', 'IT', 'Operations']
@@ -41,6 +43,7 @@ export const mockUsers: User[] = [
     roleId: 2,
     status: 'inactive',
     createdAt: '2024-02-01',
+    warehouseId: 2,
   },
   {
     id: 4,
@@ -51,6 +54,7 @@ export const mockUsers: User[] = [
     roleId: 2,
     status: 'active',
     createdAt: '2024-02-10',
+    warehouseId: 1,
   },
   {
     id: 5,

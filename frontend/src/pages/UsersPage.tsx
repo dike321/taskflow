@@ -16,6 +16,7 @@ import { mockRoles } from '../data/roles'
 import type { Role } from '../data/roles'
 import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
+import { useWarehouses } from '../data/warehouses'
 
 const badgeVariants: Array<'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info'> = [
   'primary',
@@ -32,6 +33,7 @@ const getRoleName = (roleId: number) => mockRoles.find((role) => role.id === rol
 export default function UsersPage() {
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
+  const { warehouses } = useWarehouses()
   const [users, setUsers] = useState<User[]>(mockUsers)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -44,6 +46,7 @@ export default function UsersPage() {
     department: DEPARTMENTS[0],
     roleId: mockRoles[0]?.id ?? 0,
     status: 'active',
+    warehouseId: 0,
   })
 
   const [nameQuery, setNameQuery] = useState('')
@@ -79,6 +82,7 @@ export default function UsersPage() {
       department: user.department,
       roleId: user.roleId,
       status: user.status,
+      warehouseId: user.warehouseId ?? 0,
     })
     setIsModalOpen(true)
   }
@@ -110,6 +114,7 @@ export default function UsersPage() {
       department: DEPARTMENTS[0],
       roleId: mockRoles[0]?.id ?? 0,
       status: 'active',
+      warehouseId: 0,
     })
     setIsModalOpen(true)
   }
@@ -117,11 +122,13 @@ export default function UsersPage() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
 
+    const warehouseId = formData.warehouseId || undefined
+
     if (editingUser) {
       setUsers(
         users.map((user) =>
           user.id === editingUser.id
-            ? { ...user, ...formData, status: formData.status as 'active' | 'inactive' }
+            ? { ...user, ...formData, status: formData.status as 'active' | 'inactive', warehouseId }
             : user,
         ),
       )
@@ -137,6 +144,7 @@ export default function UsersPage() {
         id: Math.max(...users.map((u) => u.id)) + 1,
         ...formData,
         status: formData.status as 'active' | 'inactive',
+        warehouseId,
         createdAt: new Date().toISOString().split('T')[0],
       }
       setUsers([...users, newUser])
@@ -157,6 +165,16 @@ export default function UsersPage() {
     { key: 'email', header: 'Email' },
     { key: 'phone', header: 'Phone' },
     { key: 'department', header: 'Department' },
+    {
+      key: 'warehouse',
+      header: 'Warehouse',
+      render: (user: User) =>
+        user.warehouseId ? (
+          warehouses.find((w) => w.id === user.warehouseId)?.name ?? 'Unknown'
+        ) : (
+          <span className="text-muted small">All</span>
+        ),
+    },
     {
       key: 'role',
       header: 'Role',
@@ -310,6 +328,21 @@ export default function UsersPage() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </Select>
+          <Select
+            label="Assigned Warehouse (optional)"
+            value={formData.warehouseId}
+            onChange={(e) => setFormData({ ...formData, warehouseId: Number(e.target.value) })}
+          >
+            <option value={0}>All warehouses (no restriction)</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.id} value={warehouse.id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </Select>
+          <p className="text-muted small mb-0">
+            Kalau diisi, user cuma bisa pilih warehouse ini saat bikin Stock In/Out/Transfer/Opname.
+          </p>
           <div className="d-flex gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-fill">
               Cancel

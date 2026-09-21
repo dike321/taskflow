@@ -117,7 +117,7 @@ Hasil review `src/data/users.ts` dan `src/pages/UsersPage.tsx` terhadap kebutuha
 - **Konsep "user yang sedang login"** — **[Selesai]**, lihat `docs/role-permission-plan.md` (`src/data/session.tsx`). `Header.tsx` juga sudah ditarik dari `currentUser` yang sebenarnya, bukan teks statis lagi.
 - **`User` field tambahan untuk cost tracking**:
   - `department: string` — **[Selesai]** (`DEPARTMENTS` const di `data/users.ts`, kolom + filter + form di `UsersPage.tsx`). Beda dari `StockTransaction.department` (cost center tujuan barang keluar) — keduanya bisa berbeda, `department` di `User` cuma departemen home-base PIC.
-  - `warehouseId?: number` di `User` — **[Belum]**, untuk membatasi staff hanya bisa mengelola gudang yang ditugaskan. Saat ini semua user dengan permission ke `inventory.*` bisa pilih gudang manapun di form — tidak ada scoping per user ke gudang tertentu.
+  - `warehouseId?: number` di `User` — **[Selesai]**, lihat detail di roadmap #1 di bawah.
 - **Role granular** — **[Selesai]**, lihat `docs/role-permission-plan.md`. Role adalah entitas dinamis (dikelola lewat halaman "Roles" di Settings), permission per-module dan per-aksi (`view`/`create`/`edit`/`delete`/`approve`/`export`).
 
 ---
@@ -127,10 +127,24 @@ Hasil review `src/data/users.ts` dan `src/pages/UsersPage.tsx` terhadap kebutuha
 Disusun sebagai arah pengembangan supaya data model tidak perlu dibongkar ulang — **hampir semua item sudah diimplementasikan**, disinkronkan 2026-09-21. Sisa gap ditandai eksplisit per item.
 
 ### 1. Multi-gudang / Multi-lokasi — [Selesai]
-`data/warehouses.tsx` (`WarehousesProvider`, halaman `WarehousesPage.tsx` sendiri di sidebar) + `WarehouseStock { itemId, warehouseId, quantity }` (stok dipecah per lokasi, bukan 1 angka global) + `StockTransferPage.tsx` untuk transfer antar gudang. **Belum ada**: pembatasan staff ke gudang tertentu (lihat `User.warehouseId` di atas).
+`data/warehouses.tsx` (`WarehousesProvider`, halaman `WarehousesPage.tsx` sendiri di sidebar) + `WarehouseStock { itemId, warehouseId, quantity }` (stok dipecah per lokasi, bukan 1 angka global) + `StockTransferPage.tsx` untuk transfer antar gudang.
+
+**Pembatasan staff ke gudang tertentu — [Selesai]**: `User.warehouseId?: number` (optional, cuma di-set untuk Warehouse Staff lewat form Add/Edit di `UsersPage.tsx` — Admin/Supervisor dibiarkan kosong = akses semua gudang, sesuai keputusan scope). Diterapkan di form create transaksi saja (bukan halaman view/report, sesuai keputusan scope):
+- **Stock In/Out & Stock Opname** (`StockTransactionPage.tsx`, `StockOpnamePage.tsx`): dropdown Warehouse cuma menampilkan gudang yang di-assign ke `currentUser.warehouseId` kalau di-set.
+- **Transfer** (`StockTransferPage.tsx`): "From Warehouse" dikunci ke gudang staff, "To Warehouse" tetap bebas pilih gudang aktif manapun (tujuan transfer).
+- Halaman List/History/Reports/Items **tidak** dibatasi — staff tetap bisa lihat data semua gudang (view-scoping penuh sengaja tidak dikerjakan, di luar keputusan scope).
 
 ### 2. Approval Workflow — [Selesai, versi menengah]
-Alur: transaksi dari user tanpa permission `approve` otomatis `pending` (stok belum berubah) sampai di-approve/reject — bisa inline di tabel Stock In/Out/Transfer/Opname, atau lewat halaman `ApprovalsPage.tsx` (antrian approval terpusat lintas jenis transaksi, sudah ada sebagai menu sidebar sendiri). Ada **ambang batas auto-approve** (`approvalThreshold`, dikonfigurasi di `ApprovalSettingsProvider`/Settings — default 100 unit): user ber-permission `approve` yang input di bawah ambang batas langsung `approved`, di atas ambang batas tetap `pending` walau dia punya izin approve. Notifikasi approval pending sudah muncul di bell (`Header.tsx`). **Belum ada**: approval berjenjang/multi-level (satu level approve saja, bukan chain persetujuan).
+Alur: transaksi dari user tanpa permission `approve` otomatis `pending` (stok belum berubah) sampai di-approve/reject — bisa inline di tabel Stock In/Out/Transfer/Opname, atau lewat halaman `ApprovalsPage.tsx` (antrian approval terpusat lintas jenis transaksi, sudah ada sebagai menu sidebar sendiri). Ada **ambang batas auto-approve** (`approvalThreshold`, dikonfigurasi di `ApprovalSettingsProvider`/Settings — default 100 unit): user ber-permission `approve` yang input di bawah ambang batas langsung `approved`, di atas ambang batas tetap `pending` walau dia punya izin approve. Notifikasi approval pending sudah muncul di bell (`Header.tsx`).
+
+**Approval berjenjang (multi-level) — [Selesai]**. `Role.approvalLevel?: number` (`data/roles.ts`; Admin=2, Warehouse Supervisor=1, Warehouse Staff=undefined/0) + helper `canApproveAtLevel(user, module, level)` di `utils/permissions.ts`. Kedua threshold dikonfigurasi di Settings → General (`escalationThreshold`, default 500 unit, harus > `approvalThreshold`):
+- Quantity ≤ `approvalThreshold` → tetap auto-approve seperti sebelumnya (kalau creator punya permission `approve`).
+- `approvalThreshold` < quantity ≤ `escalationThreshold` → 1x approve seperti sebelumnya (siapapun ber-`approvalLevel` ≥ 1, mis. Supervisor atau Admin), langsung `approved` + stok ter-update.
+- Quantity > `escalationThreshold` → `requiresSecondApproval: true` ditentukan sekali saat transaksi dibuat (tidak berubah retroaktif kalau threshold di-update belakangan). Alur status: `pending` → (approve oleh approvalLevel≥1, dicatat di `level1ApprovedBy`/`level1ApprovedAt`, **stok belum berubah**) → `pending_level2` → (final approve oleh approvalLevel≥2, mis. Admin) → `approved`, stok baru ter-update di titik ini.
+- **Maker-checker**: user yang sama tidak bisa jadi approver level 1 **dan** level 2 pada transaksi yang sama, walau dia approvalLevel 2 (dicek `level1ApprovedBy !== currentUser.id` di `ApprovalsPage.tsx`) — kalau Admin approve level 1 sendiri, transaksi itu butuh Admin *lain* untuk final approve.
+- Reject bisa dilakukan di status `pending` maupun `pending_level2` oleh siapapun yang eligible di level itu.
+- Berlaku untuk semua jenis: Stock In/Out/Transfer/Opname. Badge status baru "Pending Final" (info/biru) di semua tabel + filter status, menampilkan "L1: {nama approver}" di `ApprovalsPage.tsx`.
+- Diuji end-to-end: Staff buat transaksi > escalation threshold → Supervisor approve (jadi Pending Final, stok belum berubah, tombol Supervisor hilang) → Admin final approve (jadi Approved, stok ter-update) → dicek di Activity Log tercatat 2 baris terpisah ("Level 1 approved... menunggu final approval" lalu "Final approved (level 2)..."). Juga diuji maker-checker: Admin yang approve level 1 sendiri tidak bisa final-approve transaksi itu sendiri.
 
 ### 3. Dokumen resmi & lampiran — [Selesai]
 Field `reference` untuk no. PO/tujuan, `supplierId` untuk in, `attachments?: Attachment[]` (tipe di-generalisasi ke `utils/attachments.ts`, dipakai juga oleh Tickets) untuk upload scan PO/Surat Jalan/Invoice/BAST — muncul sebagai kolom "Documents" di Stock In/Out & History.
