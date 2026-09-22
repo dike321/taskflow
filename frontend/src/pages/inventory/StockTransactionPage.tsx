@@ -209,6 +209,20 @@ export default function StockTransactionPage({ type }: StockTransactionPageProps
       return
     }
 
+    if (type === 'in' && isBatchItem) {
+      const trimmedBatchNumber = formData.batchNumber.trim()
+      const duplicateBatch = batches.find(
+        (b) =>
+          b.itemId === formData.itemId &&
+          b.warehouseId === formData.warehouseId &&
+          b.batchNumber.toLowerCase() === trimmedBatchNumber.toLowerCase(),
+      )
+      if (duplicateBatch) {
+        setFormError(`Batch/lot number "${trimmedBatchNumber}" is already used for this item at this warehouse`)
+        return
+      }
+    }
+
     const withinThreshold = baseQuantity <= approvalThreshold
     const approvedNow = canApprove && withinThreshold
     const requiresSecondApproval = !approvedNow && baseQuantity > escalationThreshold

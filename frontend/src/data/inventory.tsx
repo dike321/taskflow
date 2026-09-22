@@ -44,6 +44,12 @@ export function findItemByBarcode(items: Item[], code: string): Item | undefined
   return items.find((item) => item.barcode === trimmed)
 }
 
+export function findItemBySku(items: Item[], sku: string): Item | undefined {
+  const trimmed = sku.trim().toLowerCase()
+  if (!trimmed) return undefined
+  return items.find((item) => item.sku.toLowerCase() === trimmed)
+}
+
 export interface WarehouseStock {
   itemId: number
   warehouseId: number

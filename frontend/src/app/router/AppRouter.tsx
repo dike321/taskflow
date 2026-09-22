@@ -11,6 +11,7 @@ import { SuppliersProvider } from '../../data/suppliers'
 import { WarehousesProvider } from '../../data/warehouses'
 import { CompaniesProvider } from '../../data/companies'
 import { RolesProvider } from '../../data/roles'
+import { UsersProvider } from '../../data/users'
 import { TicketsProvider } from '../../data/tickets'
 import { ApprovalSettingsProvider, NotificationPreferencesProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
@@ -50,21 +51,23 @@ function AppRouter() {
               <ActivityLogProvider>
                 <InventoryDataProvider>
                   <RolesProvider>
-                    <CompaniesProvider>
-                      <SuppliersProvider>
-                        <WarehousesProvider>
-                          <TicketsProvider>
-                            <ApprovalSettingsProvider>
-                              <NotificationPreferencesProvider>
-                                <RequireAuth>
-                                  <MainLayout />
-                                </RequireAuth>
-                              </NotificationPreferencesProvider>
-                            </ApprovalSettingsProvider>
-                          </TicketsProvider>
-                        </WarehousesProvider>
-                      </SuppliersProvider>
-                    </CompaniesProvider>
+                    <UsersProvider>
+                      <CompaniesProvider>
+                        <SuppliersProvider>
+                          <WarehousesProvider>
+                            <TicketsProvider>
+                              <ApprovalSettingsProvider>
+                                <NotificationPreferencesProvider>
+                                  <RequireAuth>
+                                    <MainLayout />
+                                  </RequireAuth>
+                                </NotificationPreferencesProvider>
+                              </ApprovalSettingsProvider>
+                            </TicketsProvider>
+                          </WarehousesProvider>
+                        </SuppliersProvider>
+                      </CompaniesProvider>
+                    </UsersProvider>
                   </RolesProvider>
                 </InventoryDataProvider>
               </ActivityLogProvider>

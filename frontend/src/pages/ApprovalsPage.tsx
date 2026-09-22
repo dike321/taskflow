@@ -256,9 +256,10 @@ export default function ApprovalsPage() {
       header: 'Actions',
       render: (o: StockOpname) => {
         const canAct =
-          o.status === 'pending_level2'
+          o.picId !== currentUser.id &&
+          (o.status === 'pending_level2'
             ? canApproveAtLevel(currentUser, 'inventory.opname', 2) && o.level1ApprovedBy !== currentUser.id
-            : canApproveAtLevel(currentUser, 'inventory.opname', 1)
+            : canApproveAtLevel(currentUser, 'inventory.opname', 1))
         if (!canAct) return <span className="text-muted small">—</span>
         return (
           <div className="d-flex align-items-center gap-2">
@@ -317,9 +318,10 @@ export default function ApprovalsPage() {
       render: (t: StockTransaction) => {
         const module = moduleKeyFor(t.type)
         const canAct =
-          t.status === 'pending_level2'
+          t.picId !== currentUser.id &&
+          (t.status === 'pending_level2'
             ? canApproveAtLevel(currentUser, module, 2) && t.level1ApprovedBy !== currentUser.id
-            : canApproveAtLevel(currentUser, module, 1)
+            : canApproveAtLevel(currentUser, module, 1))
         if (!canAct) return <span className="text-muted small">—</span>
         return (
           <div className="d-flex align-items-center gap-2">

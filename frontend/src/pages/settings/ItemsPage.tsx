@@ -9,7 +9,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
-import { CATEGORIES, UNITS, useInventoryData, getStockQuantity, hasUnitConversion, findItemByBarcode } from '../../data/inventory'
+import { CATEGORIES, UNITS, useInventoryData, getStockQuantity, hasUnitConversion, findItemByBarcode, findItemBySku } from '../../data/inventory'
 import type { Item } from '../../data/inventory'
 import { useWarehouses } from '../../data/warehouses'
 import { useSession } from '../../data/session'
@@ -125,6 +125,12 @@ export default function ItemsPage() {
 
     if (formData.purchaseUnit && formData.purchaseConversionFactor < 2) {
       setFormError('Conversion factor must be at least 2')
+      return
+    }
+
+    const duplicateSku = findItemBySku(items, formData.sku)
+    if (duplicateSku && duplicateSku.id !== editingItem?.id) {
+      setFormError(`SKU "${formData.sku.trim()}" is already used by ${duplicateSku.name}`)
       return
     }
 
@@ -300,7 +306,11 @@ export default function ItemsPage() {
           <Input
             label="SKU"
             value={formData.sku}
-            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, sku: e.target.value })
+              if (formError) setFormError('')
+            }}
+            error={formError.startsWith('SKU') ? formError : undefined}
             placeholder="ATK-001"
             required
           />
@@ -371,7 +381,7 @@ export default function ItemsPage() {
                 setFormData({ ...formData, purchaseConversionFactor: parseIntInput(e.target.value) })
                 if (formError) setFormError('')
               }}
-              error={formError && !formError.startsWith('Barcode') ? formError : undefined}
+              error={formError && !formError.startsWith('Barcode') && !formError.startsWith('SKU') ? formError : undefined}
               placeholder="12"
               required
             />

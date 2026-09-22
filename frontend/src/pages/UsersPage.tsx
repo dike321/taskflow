@@ -10,7 +10,7 @@ import Select from '../components/ui/Select'
 import Badge from '../components/ui/Badge'
 import PageToolbar from '../components/common/PageToolbar'
 import { Pencil, Trash2, Plus } from '../components/common/Icons'
-import { mockUsers, DEPARTMENTS } from '../data/users'
+import { DEPARTMENTS, useUsers } from '../data/users'
 import type { User } from '../data/users'
 import { mockRoles } from '../data/roles'
 import type { Role } from '../data/roles'
@@ -18,6 +18,8 @@ import { useSession } from '../data/session'
 import { useActivityLog } from '../data/activityLog'
 import { useWarehouses } from '../data/warehouses'
 import { useCompanies } from '../data/companies'
+import { useInventoryData } from '../data/inventory'
+import { useTickets } from '../data/tickets'
 
 const badgeVariants: Array<'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info'> = [
   'primary',
@@ -36,7 +38,9 @@ export default function UsersPage() {
   const { logActivity } = useActivityLog()
   const { warehouses } = useWarehouses()
   const { companies } = useCompanies()
-  const [users, setUsers] = useState<User[]>(mockUsers)
+  const { transactions, stockOpnames } = useInventoryData()
+  const { tickets } = useTickets()
+  const { users, setUsers } = useUsers()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -95,8 +99,14 @@ export default function UsersPage() {
     setDeleteTarget(user)
   }
 
+  /** User masih dipakai kalau pernah jadi PIC/approver transaksi inventory atau reporter/assignee ticket — hapus bakal bikin histori itu yatim. */
+  const isUserInUse = (userId: number) =>
+    transactions.some((t) => t.picId === userId || t.level1ApprovedBy === userId || t.approvedBy === userId) ||
+    stockOpnames.some((o) => o.picId === userId || o.level1ApprovedBy === userId || o.approvedBy === userId) ||
+    tickets.some((t) => t.reporterId === userId || t.assigneeId === userId)
+
   const confirmDelete = () => {
-    if (deleteTarget) {
+    if (deleteTarget && !isUserInUse(deleteTarget.id)) {
       setUsers(users.filter((user) => user.id !== deleteTarget.id))
       logActivity({
         userId: currentUser.id,
@@ -377,17 +387,32 @@ export default function UsersPage() {
       </Modal>
 
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete User" size="sm">
-        <p className="mb-4">
-          Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
-        </p>
-        <div className="d-flex gap-3">
-          <Button type="button" variant="secondary" onClick={() => setDeleteTarget(null)} className="flex-fill">
-            Cancel
-          </Button>
-          <Button type="button" variant="danger" onClick={confirmDelete} className="flex-fill">
-            Delete
-          </Button>
-        </div>
+        {deleteTarget && isUserInUse(deleteTarget.id) ? (
+          <>
+            <p className="mb-4">
+              <strong>{deleteTarget.name}</strong> masih direferensikan di riwayat transaksi inventory (sebagai
+              PIC/approver) atau ticket (sebagai reporter/assignee). User tidak bisa dihapus selama masih
+              direferensikan — nonaktifkan statusnya ("Inactive") kalau user ini sudah tidak aktif.
+            </p>
+            <Button type="button" variant="secondary" onClick={() => setDeleteTarget(null)} className="w-100">
+              Close
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="mb-4">
+              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="d-flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setDeleteTarget(null)} className="flex-fill">
+                Cancel
+              </Button>
+              <Button type="button" variant="danger" onClick={confirmDelete} className="flex-fill">
+                Delete
+              </Button>
+            </div>
+          </>
+        )}
       </Modal>
     </div>
   )

@@ -1,3 +1,6 @@
+import { createContext, useContext, useState } from 'react'
+import type { ReactNode } from 'react'
+
 export interface User {
   id: number
   name: string
@@ -15,6 +18,13 @@ export interface User {
 
 export const DEPARTMENTS = ['Management', 'Warehouse', 'Finance', 'IT', 'Operations', 'Vendor']
 
+/**
+ * Sumber data user. `data/session.tsx` (login/switchUser) dan banyak halaman lain
+ * (Approvals, Tickets, Stock In/Out/Transfer/Opname PIC dropdown, Header, dst.) mengimpor
+ * array ini LANGSUNG, bukan lewat context. `UsersProvider.setUsers` WAJIB memutasi array ini
+ * in-place (bukan mengganti bindingnya) supaya semua importer itu selalu melihat data terbaru —
+ * sama seperti pola yang dipakai `RolesProvider` di data/roles.tsx.
+ */
 export const mockUsers: User[] = [
   {
     id: 1,
@@ -85,3 +95,34 @@ export const mockUsers: User[] = [
     createdAt: '2024-03-01',
   },
 ]
+
+interface UsersContextValue {
+  users: User[]
+  setUsers: (updater: User[] | ((prev: User[]) => User[])) => void
+}
+
+const UsersContext = createContext<UsersContextValue | undefined>(undefined)
+
+export function UsersProvider({ children }: { children: ReactNode }) {
+  const [users, setUsersState] = useState<User[]>(mockUsers)
+
+  const setUsers = (updater: User[] | ((prev: User[]) => User[])) => {
+    setUsersState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      // Mutasi mockUsers in-place (bukan reassign) supaya session.tsx (login/switchUser) dan
+      // importer langsung lainnya selalu baca data user terkini — tanpa itu, user baru dari
+      // UsersPage tidak bisa login, dan edit role/warehouse tidak berlaku saat user itu login.
+      mockUsers.length = 0
+      mockUsers.push(...next)
+      return next
+    })
+  }
+
+  return <UsersContext.Provider value={{ users, setUsers }}>{children}</UsersContext.Provider>
+}
+
+export function useUsers() {
+  const context = useContext(UsersContext)
+  if (!context) throw new Error('useUsers must be used within a UsersProvider')
+  return context
+}
