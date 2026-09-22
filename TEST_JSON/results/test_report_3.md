@@ -142,8 +142,8 @@ Dari pengujian APR-01/03/04 (level 1 → level 2 approval dengan approver berbed
 
 ## Ringkasan Prioritas Perbaikan (final, gabungan pass 1+2+3)
 
-1. **🔴 Route guard per-module tidak ada** (pass 1, dikonfirmasi ulang berkali-kali di pass 2 & 3 — Alice bisa akses Activity Log, Reports, General Settings)
-2. **🔴 BARU: Role Management cosmetic-only** — approvalLevel & permission toggle di UI Roles tidak pernah benar-benar diterapkan (pass 3) — levelnya sama kritis dengan #3
+1. ✅ **DIPERBAIKI 2026-09-22** — **Route guard per-module tidak ada** (pass 1, dikonfirmasi ulang berkali-kali di pass 2 & 3 — Alice bisa akses Activity Log, Reports, General Settings). Ditambahkan `RequireModule` + dibungkus ke semua route di `AppRouter.tsx`.
+2. ✅ **DIPERBAIKI 2026-09-22** — **Role Management cosmetic-only** — approvalLevel & permission toggle di UI Roles tidak pernah benar-benar diterapkan (pass 3). `data/roles.ts` → `roles.tsx` dengan `RolesProvider`/`useRoles()`.
 3. **Self-approval tidak diblokir** (pass 1, dikonfirmasi ulang di pass 3 — hanya guard level1≠level2 approver yang benar-benar ada)
 4. **UsersPage cosmetic-only** (pass 1) — CRUD User tidak mempengaruhi login/permission nyata
 5. **Validasi SKU & Batch Number tidak unik** (pass 2 & 3) — pola yang sama berulang di 2 tempat berbeda, kemungkinan ada gap serupa di tempat lain yang belum dicek

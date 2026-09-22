@@ -10,6 +10,8 @@ Legend: ✅ PASS · ❌ FAIL · ⚠️ GAP (berjalan sesuai kode, tapi kode itu 
 
 ### 1. TIDAK ADA route guard per-module — hanya sidebar yang disembunyikan (CRITICAL)
 
+> ✅ **DIPERBAIKI 2026-09-22** — lihat komponen `RequireModule` (`components/common/RequireModule.tsx`) dan pembungkusan tiap `<Route>` di `AppRouter.tsx`. Diverifikasi live: Budi Santoso (Supplier) sekarang di-redirect ke `/dashboard` saat mencoba akses `/users`, `/activity-log`, `/reports`, `/settings/general` langsung via URL.
+
 `RequireAuth.tsx` cuma cek `isAuthenticated`, tidak pernah cek `hasModuleAccess`. `hasModuleAccess` cuma dipakai untuk filter *tab/link mana yang ditampilkan* di Sidebar/Header/InventoryLayout — **bukan** untuk mem-block rendering halaman itu sendiri.
 
 **Dibuktikan live**: user **Budi Santoso (role Supplier)** — yang seharusnya cuma boleh lihat Supplier Portal — berhasil mengakses penuh:
@@ -50,6 +52,8 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 **Rekomendasi**: kalau alur multi-user lintas sesi memang harus didemokan tanpa fitur switch-user, pertimbangkan pindahkan `SessionProvider` ke posisi terluar dan biarkan data Provider lain tetap ter-mount independen dari status login.
 
 ### 5. 🆕 (ditemukan di `test_report_3.md`) RolesPage juga cosmetic-only, sama seperti Users (CRITICAL)
+
+> ✅ **DIPERBAIKI 2026-09-22** — `data/roles.ts` dikonversi ke `data/roles.tsx` dengan `RolesProvider`/`useRoles()` (pola sama seperti Companies/Suppliers/Warehouses). `setRoles` memutasi array `mockRoles` in-place supaya `utils/permissions.ts` tetap baca data terbaru tanpa perlu refactor 18 file consumer lain. Diverifikasi live: menaikkan approvalLevel Warehouse Supervisor ke Level 2 lewat UI Roles sekarang benar-benar membuat Charlie Wilson bisa Final Approve, tanpa re-login.
 
 `RolesPage.tsx` punya `useState(mockRoles)` LOKAL sendiri, terpisah dari `mockRoles` yang dipakai `utils/permissions.ts` (`getRoleForUser`, `canApproveAtLevel`, `hasPermission`, `hasModuleAccess`). Akibatnya: mengubah approvalLevel atau toggle permission module lewat UI Roles **terlihat berhasil di tabel** tapi **tidak pernah benar-benar mengubah otorisasi nyata** di manapun. Dibuktikan live saat menguji ROLE-03/ROLE-05 — detail lengkap di `test_report_3.md`.
 
