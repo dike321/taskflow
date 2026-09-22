@@ -25,6 +25,8 @@ Cukup dengan `history.pushState`/klik "switch user" ke URL tsb — tidak ada red
 
 ### 2. Maker-checker / self-approval TIDAK ditegakkan (HIGH)
 
+> ✅ **DIPERBAIKI 2026-09-22** — `ApprovalsPage.tsx` sekarang mengecualikan `picId` transaksi/opname dari kondisi `canAct` (baik cabang level-1 maupun level-2). Diverifikasi live: John Doe (pembuat) kehilangan tombol Approve pada transaksinya sendiri, sementara Charlie Wilson (approver berbeda) tetap bisa approve normal.
+
 `canApproveAtLevel(user, module, level)` di `utils/permissions.ts` cuma cek `hasPermission(user, module, 'approve') && approvalLevel >= level` — **tidak pernah membandingkan approver dengan pembuat transaksi (PIC)**. Satu-satunya guard yang ada adalah level1-approver tidak boleh sama dengan level2-approver pada transaksi yang sama (`level1ApprovedBy !== currentUser.id`).
 
 **Dibuktikan live**: login sebagai John Doe (Admin, approvalLevel 2), buat Stock In 150 rim (di atas approval threshold 100) atas namanya sendiri, lalu **John Doe berhasil approve transaksi buatannya sendiri** — tombol Approve aktif, klik langsung mengubah status ke `approved` dan stok bertambah. Tidak ada penolakan/warning apapun.
@@ -32,6 +34,8 @@ Cukup dengan `history.pushState`/klik "switch user" ke URL tsb — tidak ada red
 **Rekomendasi**: tambahkan cek `transaction.picUserId !== currentUser.id` (atau field pembuat yang setara) di kondisi render tombol Approve/Reject dan di handler-nya.
 
 ### 3. Modul Users terputus dari data source asli — CRUD di UsersPage murni kosmetik (HIGH)
+
+> ✅ **DIPERBAIKI 2026-09-22** — `data/users.ts` dikonversi ke `data/users.tsx` dengan `UsersProvider`/`useUsers()`, pola sama seperti perbaikan Roles. Diverifikasi live: user baru langsung bisa login dengan role yang benar tanpa perlu trik apapun.
 
 `UsersPage.tsx` punya `useState(mockUsers)` LOKAL sendiri, terpisah dari `mockUsers` yang diimpor `data/session.tsx` (untuk login) dan halaman lain (Stock In PIC dropdown, Approvals `getUserName`, switch-user menu, dst). Akibatnya:
 
@@ -81,7 +85,7 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 | USER-02 | ✅ PASS            | Submit form kosong ditahan HTML5 validation (`checkValidity()=false`)                                                       |
 | USER-03 | ✅ PASS (UI)       | Edit Charlie Wilson di tabel berhasil —**tapi lihat Temuan Kritis #3**: perubahan tidak berlaku saat dia login         |
 | USER-04 | ✅ PASS            | Filter Role=Warehouse Staff + Status=Active → tepat Alice Brown & Charlie Wilson, Bob (inactive) ter-exclude                 |
-| USER-05 | ⚠️ GAP CONFIRMED | Delete Jane Smith (approver historis) berhasil tanpa warning — tidak ada guard`isXInUse` seperti Roles/Companies/Suppliers |
+| USER-05 | ✅ **DIPERBAIKI 2026-09-22** | `isUserInUse` ditambahkan di UsersPage.tsx (cek referensi di transaksi/opname sebagai PIC/approver, dan ticket sebagai reporter/assignee) — delete sekarang diblokir dengan pesan jelas untuk user yang masih dipakai |
 
 **5/5 executed** — validasi UI-level semua lulus, tapi 2 di antaranya (01, 03) mengekspos Temuan Kritis #3.
 
@@ -163,10 +167,13 @@ Ini konsekuensi wajar dari arsitektur mock-data tanpa backend, tapi berdampak ny
 
 **Semua skenario ⏭️ di file ini sudah dieksekusi live** — lihat `test_report_2.md` (modul 07-09, 11-14, 17-19) dan `test_report_3.md` (semua sisa ⏭️ dari file ini + file 2, termasuk skenario #20 full E2E flow). Tidak ada lagi skenario dari `TEST_JSON/scenarios/*.json` yang belum disentuh sama sekali.
 
-## Rekomendasi Prioritas Perbaikan (lihat versi final gabungan di `test_report_3.md`)
+## Status akhir (2026-09-22): SEMUA gap di atas sudah diperbaiki
 
-1. **Route guard per-module** (Temuan #1) — prioritas tertinggi, ini gap keamanan/otorisasi nyata
-2. **🆕 RolesPage cosmetic-only** (Temuan #5, ditemukan di `test_report_3.md`) — levelnya sama kritis dengan #1
-3. **Self-approval block** (Temuan #2) — inti dari fitur maker-checker yang sudah dibangun, saat ini tidak berfungsi
-4. **UsersProvider terpusat** (Temuan #3) — supaya CRUD Users benar-benar berefek ke seluruh aplikasi
-5. **Guard referential integrity untuk delete User** (USER-05) — konsisten dengan Roles/Companies/Suppliers
+1. ✅ **Route guard per-module** (Temuan #1) — fixed
+2. ✅ **RolesPage cosmetic-only** (Temuan #5) — fixed
+3. ✅ **Self-approval block** (Temuan #2) — fixed
+4. ✅ **UsersProvider terpusat** (Temuan #3) — fixed
+5. ✅ **Guard referential integrity untuk delete User** (USER-05) — fixed
+6. ✅ **Validasi SKU & Batch Number tidak unik** (ditemukan di `test_report_2.md`/`test_report_3.md`) — fixed
+
+Semua perbaikan diverifikasi live via browser (bukan cuma type-check/build) dan di-commit. Lihat riwayat commit `fix: enforce per-route module authorization and make Roles CRUD real` dan `fix: close remaining HIGH/MEDIUM/LOW gaps from E2E test reports`.

@@ -18,6 +18,8 @@ Di pass pertama, gap ini dibuktikan lewat modul Inventory & Users (akun Supplier
 Ini menegaskan bahwa gap #1 bukan cuma soal 1-2 modul, tapi pola arsitektur yang berlaku di seluruh route aplikasi.
 
 ### 🆕 Temuan baru: SKU item TIDAK unik (MEDIUM)
+
+> ✅ **DIPERBAIKI 2026-09-22** — `findItemBySku` ditambahkan di `data/inventory.tsx` (mirror `findItemByBarcode`), dicek di `ItemsPage.tsx` submit handler. Sekaligus memperbaiki bug pre-existing di mana pesan error non-barcode cuma tampil kalau field Purchase Unit terisi.
 `ItemsPage.tsx` punya validasi duplikat untuk **Barcode** (`Barcode already used by...`) tapi **tidak ada validasi serupa untuk SKU**. Dibuktikan live: create item baru dengan SKU `ATK-001` (SKU yang sudah dipakai "Kertas A4 80gsm") — berhasil tersimpan tanpa penolakan, menghasilkan 2 item berbeda dengan SKU sama persis. Ini masalah data-integrity nyata karena SKU biasanya jadi identifier unik untuk barcode scanning / integrasi eksternal. *(Item duplikat sudah dihapus lagi setelah tes untuk menjaga kebersihan data.)*
 
 **Rekomendasi**: tambahkan cek uniqueness untuk `sku` sama seperti yang sudah ada untuk `barcode`.
@@ -59,7 +61,7 @@ Mencoba input `-5` sebagai Physical Quantity: karakter minus otomatis terbuang o
 | ID | Hasil | Catatan |
 |---|---|---|
 | ITEM-01 | ✅ PASS | Create "Stapler Besar" (ATK-003) berhasil |
-| ITEM-02 | ⚠️ **GAP BARU** | Create item dengan SKU duplikat (ATK-001) **berhasil tersimpan**, seharusnya ditolak — lihat Temuan Baru di atas |
+| ITEM-02 | ✅ **DIPERBAIKI 2026-09-22** | Sebelumnya SKU duplikat (ATK-001) diterima tanpa validasi — sekarang ditolak dengan pesan jelas di field SKU |
 | ITEM-03 | ℹ️ KOREKSI ASUMSI (lihat `test_report_3.md`) | Minus dibuang oleh field, bukan ditolak — sama seperti OPN-04 |
 | ITEM-04 | ✅ PASS (lihat `test_report_3.md`) | Edit conversion factor 5→10, Stock In berikutnya pakai nilai baru dengan benar |
 | ITEM-05 | ℹ️ KOREKSI ASUMSI (lihat `test_report_3.md`) | Tidak ada fitur search barcode di halaman Items |
@@ -97,7 +99,7 @@ Mencoba input `-5` sebagai Physical Quantity: karakter minus otomatis terbuang o
 | BATCH-04 | ✅ PASS | Stock Out 5 botol Hand Sanitizer di Gudang Pusat Jakarta otomatis mengonsumsi dari batch expiry paling awal (`HS-2026-A`: 12→7 botol), batch expiry lebih baru (`HS-2026-B`: 8 botol) tidak tersentuh — FEFO bekerja benar |
 | BATCH-05 | ⚠️ CATATAN | Batch expired **tetap ikut dikonsumsi otomatis** oleh FEFO (lihat BATCH-04) — tidak ada block eksplisit untuk mencegah barang expired keluar. Beda dari asumsi skenario ("expired batch tidak bisa dipilih") karena UI Stock Out memang tidak punya manual batch-picker (FEFO selalu otomatis) |
 | BATCH-01 | ✅ PASS (lihat `test_report_3.md`) | Tidak ada Add Batch manual — batch dibuat otomatis lewat Stock In, sudah terbukti bekerja berkali-kali |
-| BATCH-02 | ⚠️ **GAP BARU** (lihat `test_report_3.md`) | Batch Number duplikat ("TP-2026-A") untuk item+gudang sama **diterima**, membuat 2 baris batch terpisah dengan nomor identik |
+| BATCH-02 | ✅ **DIPERBAIKI 2026-09-22** | Sebelumnya Batch Number duplikat ("TP-2026-A") untuk item+gudang sama diterima — sekarang divalidasi di `StockTransactionPage.tsx` dan ditolak dengan pesan jelas |
 
 ### 17. Settings — `17_settings.json`
 | ID | Hasil | Catatan |
@@ -132,11 +134,13 @@ Mencoba input `-5` sebagai Physical Quantity: karakter minus otomatis terbuang o
 
 **Semua skenario ⏭️ di file ini sudah dieksekusi live**, termasuk skenario #20 (full E2E flow) — lihat `test_report_3.md` untuk detail lengkap semua hasil di atas plus temuan baru yang cukup signifikan: **RolesPage.tsx ternyata punya bug arsitektur yang sama persis dengan UsersPage** (perubahan approvalLevel/permission via UI Roles tidak pernah benar-benar diterapkan ke pengecekan otorisasi nyata).
 
-## Ringkasan Prioritas Perbaikan (lihat versi final gabungan di `test_report_3.md`)
-1. **Route guard per-module** (Temuan Kritis #1, pass 1) — sekarang terbukti berlaku di banyak modul berbeda (Inventory, Users, Activity Log, Reports, Settings), prioritas tertinggi tidak berubah
-2. **🆕 RolesPage cosmetic-only** (ditemukan di pass 3) — levelnya sama kritis dengan #1
-3. **Self-approval block** (Temuan Kritis #2, pass 1)
-4. **UsersProvider terpusat** (Temuan Kritis #3, pass 1)
-5. **Validasi SKU & Batch Number tidak unik** — pola yang sama berulang di 2 tempat berbeda (pass 2 & 3)
-6. **Guard referential integrity untuk delete User** (pass 1, LOW-MEDIUM)
-7. Diskusikan apakah FEFO harus memblokir konsumsi dari batch expired, dan apakah reject approval perlu capture alasan (kebijakan produk, bukan bug murni)
+## Status akhir (2026-09-22): SEMUA 6 gap di atas sudah diperbaiki dan diverifikasi live
+
+1. ✅ Route guard per-module
+2. ✅ RolesPage cosmetic-only
+3. ✅ Self-approval block
+4. ✅ UsersProvider terpusat
+5. ✅ Validasi SKU & Batch Number unik
+6. ✅ Guard referential integrity untuk delete User
+
+Sisa item non-bug (kebijakan produk, belum diubah): FEFO tetap mengonsumsi batch expired, reject approval tanpa capture alasan.

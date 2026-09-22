@@ -144,10 +144,12 @@ Dari pengujian APR-01/03/04 (level 1 → level 2 approval dengan approver berbed
 
 1. ✅ **DIPERBAIKI 2026-09-22** — **Route guard per-module tidak ada** (pass 1, dikonfirmasi ulang berkali-kali di pass 2 & 3 — Alice bisa akses Activity Log, Reports, General Settings). Ditambahkan `RequireModule` + dibungkus ke semua route di `AppRouter.tsx`.
 2. ✅ **DIPERBAIKI 2026-09-22** — **Role Management cosmetic-only** — approvalLevel & permission toggle di UI Roles tidak pernah benar-benar diterapkan (pass 3). `data/roles.ts` → `roles.tsx` dengan `RolesProvider`/`useRoles()`.
-3. **Self-approval tidak diblokir** (pass 1, dikonfirmasi ulang di pass 3 — hanya guard level1≠level2 approver yang benar-benar ada)
-4. **UsersPage cosmetic-only** (pass 1) — CRUD User tidak mempengaruhi login/permission nyata
-5. **Validasi SKU & Batch Number tidak unik** (pass 2 & 3) — pola yang sama berulang di 2 tempat berbeda, kemungkinan ada gap serupa di tempat lain yang belum dicek
-6. **Guard referential integrity untuk delete User** (pass 1)
-7. Kebijakan produk (bukan bug): FEFO tetap mengonsumsi batch expired, reject approval tanpa capture alasan, minus sign di beberapa field numerik dibuang alih-alih ditolak eksplisit
+3. ✅ **DIPERBAIKI 2026-09-22** — **Self-approval tidak diblokir** (pass 1, dikonfirmasi ulang di pass 3). `ApprovalsPage.tsx` sekarang mengecualikan `picId` dari kondisi `canAct`.
+4. ✅ **DIPERBAIKI 2026-09-22** — **UsersPage cosmetic-only** (pass 1). `data/users.ts` → `users.tsx` dengan `UsersProvider`/`useUsers()`, pola sama seperti Roles.
+5. ✅ **DIPERBAIKI 2026-09-22** — **Validasi SKU & Batch Number tidak unik** (pass 2 & 3). `findItemBySku` + duplicate-check di `ItemsPage.tsx` dan `StockTransactionPage.tsx`.
+6. ✅ **DIPERBAIKI 2026-09-22** — **Guard referential integrity untuk delete User** (pass 1). `isUserInUse` ditambahkan di `UsersPage.tsx`.
+7. Kebijakan produk (bukan bug, belum diubah): FEFO tetap mengonsumsi batch expired, reject approval tanpa capture alasan, minus sign di beberapa field numerik dibuang alih-alih ditolak eksplisit
+
+**Status akhir 2026-09-22: semua 6 gap (2 CRITICAL + 4 HIGH/MEDIUM/LOW) sudah diperbaiki dan diverifikasi live di browser** — bukan cuma type-check/lint/build. Lihat commit `a05a752` (2 gap kritis) dan `643d855` (4 gap sisa) di riwayat git.
 
 **Status akhir**: semua skenario yang tercatat sebagai ⏭️ NOT LIVE-EXECUTED di `test_report.md` dan `test_report_2.md` sudah dieksekusi live di laporan ini. Tidak ada lagi skenario dari 20 file `TEST_JSON/scenarios/*.json` yang belum disentuh sama sekali.
