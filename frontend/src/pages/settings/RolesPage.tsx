@@ -8,7 +8,7 @@ import Input from '../../components/ui/Input'
 import Select from '../../components/ui/Select'
 import Badge from '../../components/ui/Badge'
 import { Pencil, Trash2, Plus } from '../../components/common/Icons'
-import { mockRoles, MODULES, ALL_ACTIONS } from '../../data/roles'
+import { MODULES, ALL_ACTIONS, useRoles } from '../../data/roles'
 import type { Role, PermissionAction } from '../../data/roles'
 import { mockUsers } from '../../data/users'
 import { useSession } from '../../data/session'
@@ -33,7 +33,7 @@ const approvalLevelLabel: Record<number, string> = {
 export default function RolesPage() {
   const { currentUser } = useSession()
   const { logActivity } = useActivityLog()
-  const [roles, setRoles] = useState<Role[]>(mockRoles)
+  const { roles, setRoles } = useRoles()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<Role | null>(null)

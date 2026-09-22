@@ -1,3 +1,6 @@
+import { createContext, useContext, useState } from 'react'
+import type { ReactNode } from 'react'
+
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'export'
 
 export interface Role {
@@ -43,6 +46,14 @@ export const MODULES: ModuleDef[] = [
 
 export const ALL_ACTIONS: PermissionAction[] = ['view', 'create', 'edit', 'delete', 'approve', 'export']
 
+/**
+ * Sumber data role. `utils/permissions.ts` (dan beberapa halaman lain seperti UsersPage untuk
+ * dropdown Role) mengimpor array ini LANGSUNG, bukan lewat context — supaya fungsi-fungsi
+ * permission itu tetap plain function yang bisa dipanggil dari mana saja tanpa harus jadi hook.
+ * Konsekuensinya: `RolesProvider.setRoles` WAJIB memutasi array ini in-place (bukan mengganti
+ * bindingnya dengan array baru) supaya `mockRoles` yang dipegang oleh importer lain selalu
+ * melihat data terbaru. Lihat RolesProvider di bawah.
+ */
 export const mockRoles: Role[] = [
   {
     id: 1,
@@ -120,3 +131,35 @@ export const mockRoles: Role[] = [
     },
   },
 ]
+
+interface RolesContextValue {
+  roles: Role[]
+  setRoles: (updater: Role[] | ((prev: Role[]) => Role[])) => void
+}
+
+const RolesContext = createContext<RolesContextValue | undefined>(undefined)
+
+export function RolesProvider({ children }: { children: ReactNode }) {
+  const [roles, setRolesState] = useState<Role[]>(mockRoles)
+
+  const setRoles = (updater: Role[] | ((prev: Role[]) => Role[])) => {
+    setRolesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      // Mutasi mockRoles in-place (bukan reassign) supaya utils/permissions.ts dan importer
+      // langsung lainnya (mis. UsersPage untuk dropdown Role) selalu baca data role terkini —
+      // tanpa itu, perubahan approvalLevel/permission lewat halaman ini cuma kosmetik di tabel
+      // dan tidak pernah benar-benar mengubah otorisasi nyata di aplikasi.
+      mockRoles.length = 0
+      mockRoles.push(...next)
+      return next
+    })
+  }
+
+  return <RolesContext.Provider value={{ roles, setRoles }}>{children}</RolesContext.Provider>
+}
+
+export function useRoles() {
+  const context = useContext(RolesContext)
+  if (!context) throw new Error('useRoles must be used within a RolesProvider')
+  return context
+}

@@ -2,12 +2,15 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from '../../pages/LoginPage'
 import MainLayout from '../../layouts/MainLayout'
 import RequireAuth from '../../components/common/RequireAuth'
+import RequireModule from '../../components/common/RequireModule'
 import { SessionProvider } from '../../data/session'
+import { hasPermission } from '../../utils/permissions'
 import { ActivityLogProvider } from '../../data/activityLog'
 import { InventoryDataProvider } from '../../data/inventory'
 import { SuppliersProvider } from '../../data/suppliers'
 import { WarehousesProvider } from '../../data/warehouses'
 import { CompaniesProvider } from '../../data/companies'
+import { RolesProvider } from '../../data/roles'
 import { TicketsProvider } from '../../data/tickets'
 import { ApprovalSettingsProvider, NotificationPreferencesProvider } from '../../data/settings'
 import DashboardPage from '../../pages/DashboardPage'
@@ -46,51 +49,191 @@ function AppRouter() {
             element={
               <ActivityLogProvider>
                 <InventoryDataProvider>
-                  <CompaniesProvider>
-                    <SuppliersProvider>
-                      <WarehousesProvider>
-                        <TicketsProvider>
-                          <ApprovalSettingsProvider>
-                            <NotificationPreferencesProvider>
-                              <RequireAuth>
-                                <MainLayout />
-                              </RequireAuth>
-                            </NotificationPreferencesProvider>
-                          </ApprovalSettingsProvider>
-                        </TicketsProvider>
-                      </WarehousesProvider>
-                    </SuppliersProvider>
-                  </CompaniesProvider>
+                  <RolesProvider>
+                    <CompaniesProvider>
+                      <SuppliersProvider>
+                        <WarehousesProvider>
+                          <TicketsProvider>
+                            <ApprovalSettingsProvider>
+                              <NotificationPreferencesProvider>
+                                <RequireAuth>
+                                  <MainLayout />
+                                </RequireAuth>
+                              </NotificationPreferencesProvider>
+                            </ApprovalSettingsProvider>
+                          </TicketsProvider>
+                        </WarehousesProvider>
+                      </SuppliersProvider>
+                    </CompaniesProvider>
+                  </RolesProvider>
                 </InventoryDataProvider>
               </ActivityLogProvider>
             }
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="users" element={<UsersPage />} />
+            <Route
+              path="users"
+              element={
+                <RequireModule module="users">
+                  <UsersPage />
+                </RequireModule>
+              }
+            />
             <Route path="inventory" element={<InventoryLayout />}>
               <Route index element={<Navigate to="stock-in" replace />} />
-              <Route path="stock-in" element={<StockInPage />} />
-              <Route path="stock-out" element={<StockOutPage />} />
-              <Route path="transfer" element={<StockTransferPage />} />
-              <Route path="opname" element={<StockOpnamePage />} />
-              <Route path="batches" element={<BatchesPage />} />
-              <Route path="history" element={<StockHistoryPage />} />
+              <Route
+                path="stock-in"
+                element={
+                  <RequireModule module="inventory.stockIn">
+                    <StockInPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="stock-out"
+                element={
+                  <RequireModule module="inventory.stockOut">
+                    <StockOutPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="transfer"
+                element={
+                  <RequireModule module="inventory.transfer">
+                    <StockTransferPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="opname"
+                element={
+                  <RequireModule module="inventory.opname">
+                    <StockOpnamePage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="batches"
+                element={
+                  <RequireModule module="inventory.batches">
+                    <BatchesPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="history"
+                element={
+                  <RequireModule module="inventory.history">
+                    <StockHistoryPage />
+                  </RequireModule>
+                }
+              />
             </Route>
-            <Route path="approvals" element={<ApprovalsPage />} />
-            <Route path="tickets" element={<TicketsPage />} />
-            <Route path="suppliers" element={<SuppliersPage />} />
-            <Route path="warehouses" element={<WarehousesPage />} />
-            <Route path="companies" element={<CompaniesPage />} />
-            <Route path="supplier-portal" element={<SupplierPortalPage />} />
-            <Route path="activity-log" element={<ActivityLogPage />} />
-            <Route path="reports" element={<ReportsPage />} />
+            <Route
+              path="approvals"
+              element={
+                <RequireModule
+                  check={(user) =>
+                    hasPermission(user, 'inventory.stockIn', 'approve') ||
+                    hasPermission(user, 'inventory.stockOut', 'approve')
+                  }
+                >
+                  <ApprovalsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="tickets"
+              element={
+                <RequireModule module="tickets">
+                  <TicketsPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="suppliers"
+              element={
+                <RequireModule module="suppliers">
+                  <SuppliersPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="warehouses"
+              element={
+                <RequireModule module="warehouses">
+                  <WarehousesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="companies"
+              element={
+                <RequireModule module="companies">
+                  <CompaniesPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="supplier-portal"
+              element={
+                <RequireModule module="supplierPortal">
+                  <SupplierPortalPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="activity-log"
+              element={
+                <RequireModule module="activityLog">
+                  <ActivityLogPage />
+                </RequireModule>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <RequireModule module="reports">
+                  <ReportsPage />
+                </RequireModule>
+              }
+            />
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<Navigate to="roles" replace />} />
-              <Route path="roles" element={<RolesPage />} />
-              <Route path="items" element={<ItemsPage />} />
-              <Route path="general" element={<GeneralSettingsPage />} />
-              <Route path="notifications" element={<NotificationsSettingsPage />} />
+              <Route
+                path="roles"
+                element={
+                  <RequireModule module="roles">
+                    <RolesPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="items"
+                element={
+                  <RequireModule module="inventory.items">
+                    <ItemsPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="general"
+                element={
+                  <RequireModule module="settings">
+                    <GeneralSettingsPage />
+                  </RequireModule>
+                }
+              />
+              <Route
+                path="notifications"
+                element={
+                  <RequireModule module="settings">
+                    <NotificationsSettingsPage />
+                  </RequireModule>
+                }
+              />
               <Route path="profile" element={<MyProfilePage />} />
             </Route>
           </Route>
