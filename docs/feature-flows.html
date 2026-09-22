@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskFlow Flows</title>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --border: #e3ded4;
+    --ink: #1d1a15;
+    --ink-dim: #6f6a5e;
+    --accent: #0d7d72;
+    --accent-ink: #ffffff;
+    --accent-soft: #e2f2ef;
+    --warn: #a8580d;
+    --warn-soft: #fbeee0;
+    --danger: #ae2b28;
+    --danger-soft: #fbe9e7;
+    --ok: #1c7a41;
+    --ok-soft: #e6f4ea;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    --edge-radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15181a;
+      --surface: #1c2023;
+      --surface-2: #22272a;
+      --border: #33393c;
+      --ink: #ece9e2;
+      --ink-dim: #9aa19d;
+      --accent: #35d6c4;
+      --accent-ink: #0b1413;
+      --accent-soft: #17302c;
+      --warn: #e2a355;
+      --warn-soft: #332616;
+      --danger: #e2726d;
+      --danger-soft: #331c1a;
+      --ok: #6fce8f;
+      --ok-soft: #17301f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15181a;
+    --surface: #1c2023;
+    --surface-2: #22272a;
+    --border: #33393c;
+    --ink: #ece9e2;
+    --ink-dim: #9aa19d;
+    --accent: #35d6c4;
+    --accent-ink: #0b1413;
+    --accent-soft: #17302c;
+    --warn: #e2a355;
+    --warn-soft: #332616;
+    --danger: #e2726d;
+    --danger-soft: #331c1a;
+    --ok: #6fce8f;
+    --ok-soft: #17301f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  a { color: inherit; }
+  h1, h2, h3 { text-wrap: balance; font-weight: 700; margin: 0; }
+
+  .shell {
+    display: flex;
+    min-height: 100vh;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    flex: 0 0 252px;
+    padding: 28px 18px 28px 20px;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    max-height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .brand .mark {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .brand h1 { font-size: 18px; }
+  .sidebar .sub {
+    color: var(--ink-dim);
+    font-size: 12.5px;
+    margin: 6px 0 22px;
+  }
+  .nav-group { margin-bottom: 18px; }
+  .nav-group .label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding: 0 10px;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .nav-group a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 7px;
+    text-decoration: none;
+    font-size: 13.5px;
+    color: var(--ink);
+    opacity: 0.72;
+    border-left: 2px solid transparent;
+  }
+  .nav-group a:hover { background: var(--surface-2); opacity: 1; }
+  .nav-group a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    opacity: 1;
+    font-weight: 600;
+    border-left-color: var(--accent);
+  }
+
+  .sidebar-toggle { display: none; }
+
+  /* ---------- Main ---------- */
+  main {
+    flex: 1;
+    min-width: 0;
+    padding: 40px 40px 100px;
+  }
+  .intro { max-width: 640px; margin-bottom: 44px; }
+  .intro h1 { font-size: 30px; margin-bottom: 10px; }
+  .intro p { color: var(--ink-dim); font-size: 14.5px; }
+  .intro .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-top: 18px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-dim);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  section.feature {
+    scroll-margin-top: 20px;
+    padding: 30px 0;
+    border-top: 1px solid var(--border);
+  }
+  section.feature:first-of-type { border-top: none; padding-top: 0; }
+
+  .feature-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: block;
+  }
+  .feature h2 { font-size: 21px; margin-bottom: 8px; }
+  .feature .desc { color: var(--ink-dim); font-size: 13.5px; max-width: 620px; margin-bottom: 16px; }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .tag.fix { background: var(--ok-soft); color: var(--ok); }
+  .tag.core { background: var(--accent-soft); color: var(--accent); }
+
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--edge-radius);
+    padding: 18px;
+    overflow-x: auto;
+  }
+  .diagram pre.mermaid { margin: 0; }
+
+  .note {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 13px;
+  }
+  .note b { color: var(--ink); }
+  .note code {
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 11.5px;
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--ink-dim);
+    font-size: 12px;
+  }
+
+  @media (max-width: 860px) {
+    .shell { flex-direction: column; }
+    .sidebar {
+      position: static;
+      max-height: none;
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 18px 16px;
+    }
+    .nav-group { display: none; }
+    .sidebar.open .nav-group { display: block; }
+    .sidebar-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    main { padding: 28px 16px 70px; }
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand"><span class="mark">TF</span><h1>TaskFlow Flows</h1></div>
+    <p class="sub">Diagram alur untuk tiap fitur aplikasi, per 2026-09-22.</p>
+
+    <button class="sidebar-toggle" id="navToggle">Daftar fitur <span id="navToggleIcon">▾</span></button>
+
+    <nav>
+      <div class="nav-group">
+        <span class="label">Akses</span>
+        <a href="#auth">Login &amp; Sesi</a>
+        <a href="#route-guard">Otorisasi Route</a>
+      </div>
+      <div class="nav-group">
+        <span class="label">Master Data</span>
+        <a href="#users">Manajemen User</a>
+        <a href="#roles">Role &amp; Permission</a>
+        <a href="#master">Company / Supplier / Warehouse</a>
+        <a href="#items">Inventory Items</a>
+      </div>
+      <div class="nav-group">
+        <span class="label">Transaksi Gudang</span>
+        <a href="#stock-in">Stock In</a>
+        <a href="#stock-out">Stock Out</a>
+        <a href="#transfer">Stock Transfer</a>
+        <a href="#opname">Stock Opname</a>
+        <a href="#batches">Batch &amp; FEFO</a>
+        <a href="#approval">Approval Berjenjang</a>
+      </div>
+      <div class="nav-group">
+        <span class="label">Lainnya</span>
+        <a href="#tickets">Tickets</a>
+        <a href="#notifications">Notifikasi</a>
+        <a href="#supplier-portal">Supplier Portal</a>
+        <a href="#settings">Settings, Reports &amp; Log</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="intro">
+      <h1>Alur tiap fitur TaskFlow</h1>
+      <p>16 diagram alur mengikuti perilaku aplikasi yang sebenarnya — termasuk hasil perbaikan gap dari pengujian E2E 2026-09-21/22 (route guard per-module, Roles &amp; Users CRUD yang sekarang benar-benar berlaku, self-approval yang diblokir, validasi SKU/Batch unik, dan guard hapus User).</p>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>diperbaiki &amp; terverifikasi live</span>
+        <span><i style="background:var(--accent)"></i>alur inti/dipakai modul lain</span>
+      </div>
+    </div>
+
+    <section class="feature" id="auth">
+      <span class="eyebrow">Akses · 01</span>
+      <div class="feature-head"><h2>Login &amp; Sesi</h2></div>
+      <p class="desc">Tidak ada backend/credential store nyata — login cuma mencocokkan email ke data user, password tidak diverifikasi. Logout menghapus seluruh data in-memory (bukan cuma sesi).</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([User buka /login]) --> B[Isi Email + Password]
+    B --> C{Email cocok data user?}
+    C -- Tidak --> D[Error: Email tidak terdaftar]
+    D --> B
+    C -- Ya --> E{Status user aktif?}
+    E -- Tidak --> F[Error: Akun ini nonaktif]
+    F --> B
+    E -- Ya --> G[currentUser di-set, isAuthenticated = true]
+    G --> H([Redirect ke /dashboard])
+    H --> I{Klik Logout?}
+    I -- Ya --> J[isAuthenticated = false]
+    J --> K[Semua data Provider ter-unmount &amp; reset]
+    K --> L([Redirect ke /login])
+    I -- Tidak --> M{Akses URL terproteksi tanpa login?}
+    M -- Ya --> L
+      </pre></div>
+      <div class="note"><b>Catatan:</b> pakai fitur <code>switch user</code> di header, bukan logout, kalau perlu ganti user tanpa kehilangan data transaksi yang sedang berjalan.</div>
+    </section>
+
+    <section class="feature" id="route-guard">
+      <span class="eyebrow">Akses · 02</span>
+      <div class="feature-head"><h2>Otorisasi Route</h2><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">Sebelumnya cuma sidebar yang disembunyikan — sekarang tiap route benar-benar dicek lewat <code>RequireModule</code>, bukan cuma <code>RequireAuth</code>.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([User navigasi ke route]) --> B{RequireAuth: isAuthenticated?}
+    B -- Tidak --> C([Redirect ke /login])
+    B -- Ya --> D{RequireModule: hasModuleAccess role user?}
+    D -- Tidak --> E([Redirect ke /dashboard])
+    D -- Ya --> F([Halaman dirender])
+    F --> G[Sidebar juga sembunyikan link tanpa akses - kosmetik saja]
+      </pre></div>
+      <div class="note">Diverifikasi live untuk 4 role × 20 route (80 kombinasi) — cocok 100% dengan matrix permission yang seharusnya.</div>
+    </section>
+
+    <section class="feature" id="users">
+      <span class="eyebrow">Master Data · 01</span>
+      <div class="feature-head"><h2>Manajemen User</h2><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">CRUD user sekarang lewat <code>UsersProvider</code> — perubahan langsung berlaku ke login &amp; permission, bukan cuma tampilan tabel.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Admin buka Users]) --> B{Aksi?}
+    B -- Add User --> C[Isi form: nama, email, role, company, warehouse]
+    C --> D[Submit]
+    D --> E[setUsers -&gt; mutasi data user secara in-place]
+    E --> F([User baru bisa langsung login])
+    B -- Edit User --> G[Ubah role / warehouse / status]
+    G --> H[Submit -&gt; data user ter-update]
+    H --> I([Perubahan berlaku saat user itu login berikutnya])
+    B -- Delete User --> J{isUserInUse? cek transaksi &amp; ticket}
+    J -- Ya --> K[Blokir: masih direferensikan sbg PIC/approver/reporter]
+    J -- Tidak --> L[Konfirmasi hapus]
+    L --> M([User terhapus])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="roles">
+      <span class="eyebrow">Master Data · 02</span>
+      <div class="feature-head"><h2>Role &amp; Permission</h2><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">Sama seperti Users — sekarang lewat <code>RolesProvider</code>, jadi approval level dan permission per module benar-benar dipakai <code>utils/permissions.ts</code>.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Admin buka Settings > Roles]) --> B{Aksi?}
+    B -- Add / Edit Role --> C[Set permission per module + approval level]
+    C --> D[Submit]
+    D --> E[setRoles -&gt; mutasi data role secara in-place]
+    E --> F[hasPermission / hasModuleAccess / canApproveAtLevel langsung baca data baru]
+    F --> G([User dgn role itu langsung dapat/kehilangan akses - tanpa re-login])
+    B -- Delete Role --> H{isRoleInUse? cek user dgn role ini}
+    H -- Ya --> I[Blokir: tampilkan daftar user terkait]
+    H -- Tidak --> J([Role terhapus])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="master">
+      <span class="eyebrow">Master Data · 03</span>
+      <div class="feature-head"><h2>Company / Supplier / Warehouse</h2></div>
+      <p class="desc">Ketiga entity ini memakai pola CRUD + guard referential-integrity yang sama persis.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Companies / Suppliers / Warehouses]) --> B{Aksi?}
+    B -- Create --> C[Isi form sesuai entity]
+    C --> D([Tersimpan lewat Context Provider])
+    B -- Edit --> E[Ubah data]
+    E --> D
+    B -- Delete --> F{isXInUse? cek referensi ke User / Company / Transaksi}
+    F -- Ya --> G[Blokir + pesan spesifik entity]
+    F -- Tidak --> H([Terhapus])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="items">
+      <span class="eyebrow">Master Data · 04</span>
+      <div class="feature-head"><h2>Inventory Items</h2><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">SKU sekarang divalidasi unik sama seperti Barcode yang sudah lebih dulu ada.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Settings > Items]) --> B{Aksi?}
+    B -- Create / Edit --> C[Isi SKU, Name, Category, Unit, Purchase Unit opsional]
+    C --> D{SKU sudah dipakai item lain?}
+    D -- Ya --> E[Error: SKU sudah dipakai]
+    E --> C
+    D -- Tidak --> F{Barcode diisi &amp; sudah dipakai?}
+    F -- Ya --> G[Error: Barcode sudah dipakai]
+    G --> C
+    F -- Tidak --> H{Purchase Unit = Unit dasar, atau factor &lt; 2?}
+    H -- Ya --> I[Error validasi konversi]
+    I --> C
+    H -- Tidak --> J([Item tersimpan, stok awal 0 di semua gudang])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="stock-in">
+      <span class="eyebrow">Transaksi · 01</span>
+      <div class="feature-head"><h2>Stock In</h2></div>
+      <p class="desc">Barang masuk gudang. Warehouse ter-lock otomatis kalau user punya <code>warehouseId</code>.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Stock In]) --> B[Pilih Warehouse - locked sesuai user]
+    B --> C[Pilih Item, Qty, Unit]
+    C --> D{Qty &gt; 0 &amp; Warehouse terisi?}
+    D -- Tidak --> E[Error validasi]
+    D -- Ya --> F{Item batch-tracked?}
+    F -- Ya --> G{Batch Number + Expiry diisi &amp; belum dipakai item+warehouse ini?}
+    G -- Tidak/Duplikat --> H[Error validasi batch]
+    F -- Tidak --> I[Hitung base quantity]
+    G -- Ya --> I
+    I --> J{Qty ≤ Approval Threshold &amp; user bisa approve?}
+    J -- Ya --> K([Approved - stok &amp; batch langsung dibuat])
+    J -- Tidak --> L[Status: Pending]
+    L --> M{Qty &gt; Escalation Threshold?}
+    M -- Ya --> N([Masuk antrian Approval 2 level])
+    M -- Tidak --> O([Masuk antrian Approval 1 level])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="stock-out">
+      <span class="eyebrow">Transaksi · 02</span>
+      <div class="feature-head"><h2>Stock Out</h2></div>
+      <p class="desc">Barang keluar gudang, dipakai departemen tertentu. Tidak boleh melebihi stok tersedia.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Stock Out]) --> B[Pilih Warehouse - locked sesuai user]
+    B --> C[Pilih Item, Qty, Department]
+    C --> D{Qty &gt; 0?}
+    D -- Tidak --> E[Error]
+    D -- Ya --> F{Qty ≤ stok tersedia di warehouse ini?}
+    F -- Tidak --> G[Error: Quantity exceeds available stock]
+    F -- Ya --> H{Qty ≤ Approval Threshold &amp; user bisa approve?}
+    H -- Ya --> I([Approved - stok berkurang, FEFO consume batch])
+    H -- Tidak --> J([Pending - alur Approval Berjenjang])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="transfer">
+      <span class="eyebrow">Transaksi · 03</span>
+      <div class="feature-head"><h2>Stock Transfer</h2></div>
+      <p class="desc">Pindah stok antar gudang.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Transfer]) --> B[Pilih Item, From Warehouse, To Warehouse, Qty]
+    B --> C{From = To?}
+    C -- Ya --> D[Error: gudang asal &amp; tujuan harus beda]
+    C -- Tidak --> E{Qty ≤ stok di From Warehouse?}
+    E -- Tidak --> F[Error: stok tidak cukup]
+    E -- Ya --> G{Qty ≤ Approval Threshold &amp; bisa approve?}
+    G -- Ya --> H([Approved - stok langsung pindah])
+    G -- Tidak --> I([Pending - alur Approval Berjenjang])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="opname">
+      <span class="eyebrow">Transaksi · 04</span>
+      <div class="feature-head"><h2>Stock Opname</h2></div>
+      <p class="desc">Rekonsiliasi hasil hitung fisik vs catatan sistem.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buka Stock Opname]) --> B[Pilih Warehouse + Item]
+    B --> C[Sistem tampilkan System Stock]
+    C --> D[Input Physical Quantity]
+    D --> E{Physical = System?}
+    E -- Ya --> F[Submit diblokir: nothing to adjust]
+    E -- Tidak --> G[Hitung difference = physical - system]
+    G --> H{|difference| ≤ Approval Threshold &amp; bisa approve?}
+    H -- Ya --> I([Approved - stok langsung disesuaikan])
+    H -- Tidak --> J([Pending - alur Approval Berjenjang])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="batches">
+      <span class="eyebrow">Transaksi · 05</span>
+      <div class="feature-head"><h2>Batch &amp; FEFO</h2><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">Nomor batch sekarang divalidasi unik per item+gudang. FEFO tetap mengonsumsi batch expired (kebijakan produk, belum diubah).</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Stock In item batch-tracked disetujui]) --> B[Batch baru dibuat: nomor, expiry, qty]
+    B --> C([Muncul di halaman Batches])
+    C --> D{expiryDate sudah lewat?}
+    D -- Ya --> E[Badge: Expired]
+    D -- Tidak --> F{Dalam 30 hari ke depan?}
+    F -- Ya --> G[Badge: Expiring Soon]
+    F -- Tidak --> H[Badge: OK]
+    I([Stock Out item batch-tracked disetujui]) --> J[consumeFefo: ambil dari expiry paling awal dulu]
+    J --> K[Termasuk batch Expired - tidak diblokir]
+    K --> L[Kurangi qty batch itu, lanjut ke batch berikutnya kalau kurang]
+      </pre></div>
+    </section>
+
+    <section class="feature" id="approval">
+      <span class="eyebrow">Transaksi · 06</span>
+      <div class="feature-head"><h2>Approval Berjenjang</h2><span class="tag core">alur inti</span><span class="tag fix">diperbaiki 2026-09-22</span></div>
+      <p class="desc">Dipakai bersama oleh Stock In/Out/Transfer/Opname. Self-approval sekarang diblokir — pembuat transaksi tidak bisa approve punya sendiri.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Transaksi status: Pending]) --> B{requiresSecondApproval?}
+    B -- Tidak --> C{User = pembuat transaksi?}
+    C -- Ya --> D([Tombol Approve/Reject disembunyikan])
+    C -- Tidak --> E{canApproveAtLevel 1?}
+    E -- Tidak --> D
+    E -- Ya --> F{Approve atau Reject?}
+    F -- Approve --> G([Status: Approved - stok/opname diterapkan])
+    F -- Reject --> H([Status: Rejected])
+    B -- Ya --> I{User = pembuat transaksi?}
+    I -- Ya --> D
+    I -- Tidak --> J{canApproveAtLevel 1?}
+    J -- Ya --> K[Approve Level 1]
+    K --> L([Status: Pending Final, catat approver level 1])
+    L --> M{User baru = pembuat ATAU = approver level 1?}
+    M -- Ya --> D
+    M -- Tidak --> N{canApproveAtLevel 2?}
+    N -- Ya --> O{Approve atau Reject?}
+    O -- Approve --> G
+    O -- Reject --> H
+      </pre></div>
+      <div class="note">Satu-satunya guard maker-checker sebelum perbaikan: approver level 1 tidak boleh sama dengan approver level 2 di transaksi yang sama. Sekarang ditambah: <b>pembuat transaksi tidak boleh approve transaksinya sendiri</b> di kedua level.</div>
+    </section>
+
+    <section class="feature" id="tickets">
+      <span class="eyebrow">Lainnya · 01</span>
+      <div class="feature-head"><h2>Tickets</h2></div>
+      <p class="desc">Internal support ticket, status berjalan bertahap.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Buat Ticket baru]) --> B([Status: Open])
+    B --> C[Start Progress]
+    C --> D([Status: In Progress])
+    D --> E[Mark Resolved]
+    E --> F([Status: Resolved])
+    F --> G[Close Ticket]
+    G --> H([Status: Closed])
+    F --> I[Reopen]
+    H --> I
+    I --> B
+    B -.-> J[Tambah Komentar - kapan saja]
+    D -.-> J
+    F -.-> J
+    H -.-> J
+    B --> K{dueDate lewat &amp; status Open/In Progress?}
+    D --> K
+    K -- Ya --> L([Muncul sbg Overdue di Notification Bell])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="notifications">
+      <span class="eyebrow">Lainnya · 02</span>
+      <div class="feature-head"><h2>Notifikasi</h2></div>
+      <p class="desc">Daftar terhitung real-time, bukan log tersimpan — tidak ada state read/unread.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Bell diklik]) --> B[Hitung ulang setiap render]
+    B --> C[Ticket overdue]
+    B --> D[Approval pending untuk user ini]
+    B --> E[Ticket assigned to me]
+    B --> F[Komentar baru di ticket saya]
+    B --> G[Batch expired]
+    C --> H([Badge count = total semua kategori])
+    D --> H
+    E --> H
+    F --> H
+    G --> H
+    H --> I[Klik item -&gt; navigasi ke halaman terkait]
+    I --> J([Notifikasi otomatis hilang begitu kondisi sudah tidak terpenuhi])
+      </pre></div>
+    </section>
+
+    <section class="feature" id="supplier-portal">
+      <span class="eyebrow">Lainnya · 03</span>
+      <div class="feature-head"><h2>Supplier Portal</h2></div>
+      <p class="desc">Akses terbatas untuk user eksternal role Supplier.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Supplier login]) --> B[RequireModule: module supplierPortal]
+    B --> C[Tampilkan profil Company miliknya sendiri]
+    C --> D[Tampilkan Stock In yang supplierId cocok company-nya]
+    D --> E{Klik Confirm Shipment?}
+    E -- Ya --> F[supplierConfirmedAt = hari ini]
+    F --> G([Status shipment: Confirmed])
+    E -- Tidak --> H([Tetap menunggu konfirmasi])
+    D -.-> I[Data supplier lain TIDAK pernah dikirim ke client]
+      </pre></div>
+    </section>
+
+    <section class="feature" id="settings">
+      <span class="eyebrow">Lainnya · 04</span>
+      <div class="feature-head"><h2>Settings, Reports &amp; Activity Log</h2></div>
+      <p class="desc">Threshold approval dikonfigurasi di sini; tiap aksi tercatat ke Activity Log.</p>
+      <div class="diagram"><pre class="mermaid">
+flowchart TD
+    A([Admin buka Settings > General]) --> B[Ubah Approval Threshold]
+    B --> C[Ubah Escalation Threshold]
+    C --> D{Escalation ≤ Approval?}
+    D -- Ya --> E[Error: harus lebih besar dari Approval Threshold]
+    D -- Tidak --> F([Tersimpan, dipakai transaksi baru berikutnya])
+    G([Setiap Create/Update/Delete/Approve/Reject]) --> H[logActivity: actor, module, deskripsi, timestamp]
+    H --> I([Tampil di Activity Log - append only])
+    F -.-> J([Reports: agregasi by category / warehouse / department])
+    J --> K([Ter-scope ke warehouse user kalau warehouseId di-set])
+      </pre></div>
+    </section>
+
+    <footer>TaskFlow — dokumen alur ini merangkum perilaku aplikasi per 2026-09-22, termasuk perbaikan dari <code>TEST_JSON/results/</code>. Dibuat otomatis dari pembacaan kode &amp; pengujian live, bukan spesifikasi terpisah.</footer>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var toggle = document.getElementById('navToggle');
+      var sidebar = document.getElementById('sidebar');
+      var icon = document.getElementById('navToggleIcon');
+      if (toggle) {
+        toggle.addEventListener('click', function () {
+          sidebar.classList.toggle('open');
+          icon.textContent = sidebar.classList.contains('open') ? '▴' : '▾';
+        });
+      }
+    } catch (e) {}
+
+    try {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.nav-group a'));
+      var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+      var byId = {};
+      links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            links.forEach(function (a) { a.classList.remove('active'); });
+            var link = byId[entry.target.id];
+            if (link) link.classList.add('active');
+          }
+        });
+      }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+
+      sections.forEach(function (s) { observer.observe(s); });
+    } catch (e) {}
+  })();
+</script>
+
+<!-- Halaman ini dibuka sebagai file HTML biasa (bukan lewat claude.ai), jadi diagram dirender lewat mermaid.js di sini: -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
+      securityLevel: 'loose',
+    });
+  }
+</script>
+</body>
+</html>
