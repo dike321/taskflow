@@ -14,13 +14,13 @@ Seluruh aplikasi TaskFlow sampai saat ini berjalan **tanpa backend sungguhan** �
 
 Backend dipecah jadi **2 service terpisah**, bukan satu aplikasi tunggal:
 
-| Service | Bahasa/Framework | Tanggung Jawab |
-|---|---|---|
-| **API Utama** | **Laravel (PHP)** | Login/Auth, semua modul admin & logika bisnis — hampir seluruh isi [`docs/features/`](features/00-overview.md) |
-| **Realtime & Payment** | **Go (Golang)** | Notifikasi real-time (WebSocket) dan pemrosesan pembayaran |
-| **Database** | **PostgreSQL** (1 instance, dipakai bersama) | Dipilih karena didukung penuh oleh Laravel (Eloquent) maupun Go (GORM/pgx), dan lebih cocok untuk data yang sangat relasional seperti aplikasi ini (banyak aturan "masih dipakai di tabel lain, tidak boleh dihapus" — lihat bagian 5) |
-| **Jembatan Laravel ↔ Go** | **Redis** (pub/sub) | Laravel "mengumumkan" kejadian (tiket baru, approval pending, dst), Go dengar dan teruskan ke browser lewat WebSocket |
-| **File Storage** | **AWS S3** (tingkat gratis) | Lampiran tiket |
+| Service                          | Bahasa/Framework                                   | Tanggung Jawab                                                                                                                                                                                                                          |
+| -------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API Utama**              | **Laravel (PHP)**                            | Login/Auth, semua modul admin & logika bisnis — hampir seluruh isi[`docs/features/`](features/00-overview.md)                                                                                                                         |
+| **Realtime & Payment**     | **Go (Golang)**                              | Notifikasi real-time (WebSocket) dan pemrosesan pembayaran                                                                                                                                                                              |
+| **Database**               | **PostgreSQL** (1 instance, dipakai bersama) | Dipilih karena didukung penuh oleh Laravel (Eloquent) maupun Go (GORM/pgx), dan lebih cocok untuk data yang sangat relasional seperti aplikasi ini (banyak aturan "masih dipakai di tabel lain, tidak boleh dihapus" — lihat bagian 5) |
+| **Jembatan Laravel ↔ Go** | **Redis** (pub/sub)                          | Laravel "mengumumkan" kejadian (tiket baru, approval pending, dst), Go dengar dan teruskan ke browser lewat WebSocket                                                                                                                   |
+| **File Storage**           | **AWS S3** (tingkat gratis)                  | Lampiran tiket                                                                                                                                                                                                                          |
 
 Kenapa dipecah begini: Laravel unggul untuk CRUD + aturan bisnis kompleks (Eloquent, validasi, migration, ekosistem matang) — cocok untuk mayoritas fitur TaskFlow yang memang isinya form + aturan approval. Go dipisah khusus untuk 2 hal yang sifatnya beda: koneksi WebSocket yang butuh banyak koneksi hidup bersamaan (Go lebih ringan untuk ini), dan pemrosesan pembayaran yang biasanya butuh isolasi tersendiri dari sistem admin utama.
 
@@ -90,31 +90,31 @@ Policy cek `role.permissions[module]` milik user, cocokkan dengan aksi yang dimi
 
 ### 4.3 Lapis 3 — Scoping tambahan (khusus beberapa modul)
 
-| Modul | Aturan scoping |
-|---|---|
-| Stock In/Out/Transfer/Opname, Items (stok per gudang) | Kalau `user.warehouse_id` terisi, cuma boleh lihat/buat data untuk gudang itu |
-| Companies, Stock In (lewat Supplier Portal) | Role Supplier cuma boleh lihat data yang `company_id`-nya cocok dengan company dia sendiri |
-| Reports | Sama seperti Inventory Items — ter-scope ke gudang kalau `warehouse_id` terisi |
+| Modul                                                 | Aturan scoping                                                                              |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Stock In/Out/Transfer/Opname, Items (stok per gudang) | Kalau`user.warehouse_id` terisi, cuma boleh lihat/buat data untuk gudang itu              |
+| Companies, Stock In (lewat Supplier Portal)           | Role Supplier cuma boleh lihat data yang`company_id`-nya cocok dengan company dia sendiri |
+| Reports                                               | Sama seperti Inventory Items — ter-scope ke gudang kalau`warehouse_id` terisi            |
 
 ---
 
 ## 5. Peta: Fitur Frontend → Endpoint Laravel
 
-| # | Fitur (lihat `docs/features/`) | Endpoint / Controller Laravel |
-|---|---|---|
-| 1 | Login & Sesi | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` |
-| 4 | Manajemen User | `UserController` (resource) |
-| 5 | Role & Permission | `RoleController` (resource) |
-| 6 | Master Data | `CompanyController`, `SupplierController`, `WarehouseController` |
-| 7 | Inventory Items | `ItemController` |
-| 8-10 | Stock In / Out / Transfer | `StockTransactionController` — dibedakan field `type` |
-| 11 | Batch & FEFO | `BatchController` (read-only dari sisi API; ditulis otomatis dari Stock In) |
-| 12 | Stock Opname | `StockOpnameController` |
-| 13 | Approval Berjenjang | Method khusus di atas: `approve()`, `reject()` — bukan `update()` biasa, supaya aturan approval (bagian 6) tidak bisa dilewati |
-| 14 | Tickets | `TicketController`, `TicketCommentController` |
-| 15 | Notifikasi | *(tidak ada endpoint sendiri di Laravel)* — Laravel cuma **menerbitkan event** ke Redis saat sesuatu terjadi (tiket overdue terdeteksi lewat scheduled job, approval pending baru, batch mau kedaluwarsa); Go yang meneruskan ke browser — lihat bagian 7 |
-| 16 | Supplier Portal | Endpoint yang sama dengan Stock In/Companies, dibatasi lewat Policy (bagian 4.3), bukan endpoint terpisah |
-| 17 | Settings, Reports, Activity Log | `SettingController`, `ReportController` (read-only agregasi), `ActivityLogController` (read-only, ditulis otomatis lewat model event `created`/`updated`/`deleted`) |
+| #    | Fitur (lihat`docs/features/`) | Endpoint / Controller Laravel                                                                                                                                                                                                                                       |
+| ---- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Login & Sesi                    | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`                                                                                                                                                                                                 |
+| 4    | Manajemen User                  | `UserController` (resource)                                                                                                                                                                                                                                       |
+| 5    | Role & Permission               | `RoleController` (resource)                                                                                                                                                                                                                                       |
+| 6    | Master Data                     | `CompanyController`, `SupplierController`, `WarehouseController`                                                                                                                                                                                              |
+| 7    | Inventory Items                 | `ItemController`                                                                                                                                                                                                                                                  |
+| 8-10 | Stock In / Out / Transfer       | `StockTransactionController` — dibedakan field `type`                                                                                                                                                                                                          |
+| 11   | Batch & FEFO                    | `BatchController` (read-only dari sisi API; ditulis otomatis dari Stock In)                                                                                                                                                                                       |
+| 12   | Stock Opname                    | `StockOpnameController`                                                                                                                                                                                                                                           |
+| 13   | Approval Berjenjang             | Method khusus di atas:`approve()`, `reject()` — bukan `update()` biasa, supaya aturan approval (bagian 6) tidak bisa dilewati                                                                                                                                |
+| 14   | Tickets                         | `TicketController`, `TicketCommentController`                                                                                                                                                                                                                   |
+| 15   | Notifikasi                      | *(tidak ada endpoint sendiri di Laravel)* — Laravel cuma **menerbitkan event** ke Redis saat sesuatu terjadi (tiket overdue terdeteksi lewat scheduled job, approval pending baru, batch mau kedaluwarsa); Go yang meneruskan ke browser — lihat bagian 7 |
+| 16   | Supplier Portal                 | Endpoint yang sama dengan Stock In/Companies, dibatasi lewat Policy (bagian 4.3), bukan endpoint terpisah                                                                                                                                                           |
+| 17   | Settings, Reports, Activity Log | `SettingController`, `ReportController` (read-only agregasi), `ActivityLogController` (read-only, ditulis otomatis lewat model event `created`/`updated`/`deleted`)                                                                                     |
 
 ---
 
@@ -122,17 +122,17 @@ Policy cek `role.permissions[module]` milik user, cocokkan dengan aksi yang dimi
 
 Semua ini sudah berjalan benar di frontend (sudah diuji & diperbaiki — lihat [`docs/features/00-overview.md`](features/00-overview.md) bagian 0.5), tapi **saat ini cuma dicek di browser**. Laravel harus mengulang persis aturan yang sama supaya tidak bisa dilewati:
 
-| Aturan | Ada di fitur | Ringkas |
-|---|---|---|
-| Approval Threshold & Escalation Threshold | [13. Approval Berjenjang](features/13-approval-berjenjang.md) | Jumlah menentukan auto-approve / 1 tahap / 2 tahap |
-| Pembuat tidak boleh approve transaksinya sendiri | [13. Approval Berjenjang](features/13-approval-berjenjang.md) | Cek `transaction.pic_id !== $user->id` |
-| Approver level 1 ≠ approver level 2 | [13. Approval Berjenjang](features/13-approval-berjenjang.md) | Cek `level1_approved_by !== $user->id` |
-| Stok tidak boleh minus | [9. Stock Out](features/09-stock-out.md), [10. Stock Transfer](features/10-stock-transfer.md) | Jumlah ≤ stok tersedia di gudang asal |
-| SKU & Barcode unik | [7. Inventory Items](features/07-inventory-items.md) | Dicek lewat Form Request, pesan errornya jelas (bukan cuma andalkan unique constraint DB) |
-| Nomor Batch unik per item+gudang | [8. Stock In](features/08-stock-in.md), [11. Batch & FEFO](features/11-batch-fefo.md) | |
-| FEFO — batch expiry terdekat keluar duluan | [11. Batch & FEFO](features/11-batch-fefo.md) | Logika `consumeFefo()` dipindah ke Laravel |
-| Guard hapus data yang masih dipakai | [4. Manajemen User](features/04-manajemen-user.md), [5. Role & Permission](features/05-role-permission.md), [6. Master Data](features/06-master-data.md) | Dicek di `deleting` model event / Policy sebelum `delete()` jalan |
-| Escalation Threshold harus lebih besar dari Approval Threshold | [17. Settings](features/17-settings-reports-log.md) | |
+| Aturan                                                         | Ada di fitur                                                                                                                                              | Ringkas                                                                                   |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Approval Threshold & Escalation Threshold                      | [13. Approval Berjenjang](features/13-approval-berjenjang.md)                                                                                              | Jumlah menentukan auto-approve / 1 tahap / 2 tahap                                        |
+| Pembuat tidak boleh approve transaksinya sendiri               | [13. Approval Berjenjang](features/13-approval-berjenjang.md)                                                                                              | Cek`transaction.pic_id !== $user->id`                                                   |
+| Approver level 1 ≠ approver level 2                           | [13. Approval Berjenjang](features/13-approval-berjenjang.md)                                                                                              | Cek`level1_approved_by !== $user->id`                                                   |
+| Stok tidak boleh minus                                         | [9. Stock Out](features/09-stock-out.md), [10. Stock Transfer](features/10-stock-transfer.md)                                                               | Jumlah ≤ stok tersedia di gudang asal                                                    |
+| SKU & Barcode unik                                             | [7. Inventory Items](features/07-inventory-items.md)                                                                                                       | Dicek lewat Form Request, pesan errornya jelas (bukan cuma andalkan unique constraint DB) |
+| Nomor Batch unik per item+gudang                               | [8. Stock In](features/08-stock-in.md), [11. Batch &amp; FEFO](features/11-batch-fefo.md)                                                                   |                                                                                           |
+| FEFO — batch expiry terdekat keluar duluan                    | [11. Batch &amp; FEFO](features/11-batch-fefo.md)                                                                                                          | Logika`consumeFefo()` dipindah ke Laravel                                               |
+| Guard hapus data yang masih dipakai                            | [4. Manajemen User](features/04-manajemen-user.md), [5. Role &amp; Permission](features/05-role-permission.md), [6. Master Data](features/06-master-data.md) | Dicek di`deleting` model event / Policy sebelum `delete()` jalan                      |
+| Escalation Threshold harus lebih besar dari Approval Threshold | [17. Settings](features/17-settings-reports-log.md)                                                                                                        |                                                                                           |
 
 ---
 
@@ -228,12 +228,12 @@ flowchart TD
 
 ## 12. Hal yang Masih Perlu Dijawab
 
-| Pertanyaan | Kenapa penting |
-|---|---|
-| Detail fitur Payment (bagian 8) | Menentukan struktur tabel `payments` dan endpoint di Go |
-| PostgreSQL-nya jalan di mana? (Docker lokal / RDS / lainnya) | Menentukan setup Fase 0 |
-| Redis-nya jalan di mana? | Menentukan setup Fase 6-7 |
-| AWS S3: sudah ada akun AWS, atau perlu dibuatkan dulu? | Menentukan kapan Fase 4 (lampiran tiket) bisa mulai |
+| Pertanyaan                                                   | Kenapa penting                                           |
+| ------------------------------------------------------------ | -------------------------------------------------------- |
+| Detail fitur Payment (bagian 8)                              | Menentukan struktur tabel`payments` dan endpoint di Go |
+| PostgreSQL-nya jalan di mana? (Docker lokal / RDS / lainnya) | Menentukan setup Fase 0                                  |
+| Redis-nya jalan di mana?                                     | Menentukan setup Fase 6-7                                |
+| AWS S3: sudah ada akun AWS, atau perlu dibuatkan dulu?       | Menentukan kapan Fase 4 (lampiran tiket) bisa mulai      |
 
 ## 13. Status
 
